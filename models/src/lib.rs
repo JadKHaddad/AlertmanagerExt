@@ -33,7 +33,9 @@ pub struct Alert {
     pub status: Status,
     pub labels: HashMap<String, String>,
     pub annotations: HashMap<String, String>,
+    /// rfc3339
     pub starts_at: String,
+    /// rfc3339
     pub ends_at: String,
     /// identifies the entity that caused the alert
     pub generator_url: String,

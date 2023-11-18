@@ -65,11 +65,26 @@ impl PushResponse {
         op.description("Push alerts to plugins")
             .response_with::<201, Json<Self>, _>(|res| {
                 res.description("All alerts were pushed successfully")
+                    .example({
+                        PushResponse {
+                            status: PushStatus::Full,
+                        }
+                    })
             })
             .response_with::<207, Json<Self>, _>(|res| {
                 res.description("Some alerts were pushed successfully")
+                    .example({
+                        PushResponse {
+                            status: PushStatus::Partial,
+                        }
+                    })
             })
-            .response_with::<500, Json<Self>, _>(|res| res.description("Failed to push alerts"))
+            .response_with::<500, Json<Self>, _>(|res| {
+                res.description("Failed to push alerts")
+                    .example(PushResponse {
+                        status: PushStatus::Failed,
+                    })
+            })
     }
 }
 
