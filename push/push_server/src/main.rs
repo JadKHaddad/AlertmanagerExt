@@ -9,7 +9,12 @@ use aide::{
     OperationIo,
 };
 use anyhow::{Context, Result as AnyResult};
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Extension, Json};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    Extension, Json,
+};
 use models::AlermanagerPush;
 use plugins_definitions::Plugin;
 use push_definitions::Push;
@@ -36,10 +41,10 @@ impl Deref for ApiV1State {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, OperationIo)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, OperationIo, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum PushStatus {
-    Full,
+    Ok,
     Partial,
     Failed,
 }
@@ -47,10 +52,65 @@ pub enum PushStatus {
 impl PushStatus {
     fn status_code(&self) -> StatusCode {
         match self {
-            PushStatus::Full => StatusCode::ACCEPTED,
+            PushStatus::Ok => StatusCode::ACCEPTED,
             PushStatus::Partial => StatusCode::MULTI_STATUS,
             PushStatus::Failed => StatusCode::INTERNAL_SERVER_ERROR,
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, OperationIo, PartialEq)]
+#[serde(rename_all = "camelCase")]
+#[serde(tag = "type", content = "error")]
+pub enum PluginPushStatus {
+    Ok,
+    NotFound,
+    Failed { error_message: String },
+}
+
+impl PluginPushStatus {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            PluginPushStatus::Ok => StatusCode::ACCEPTED,
+            PluginPushStatus::NotFound => StatusCode::NOT_FOUND,
+            PluginPushStatus::Failed { .. } => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, OperationIo)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginPushResponse {
+    pub status: PluginPushStatus,
+    pub plugin_name: String,
+}
+
+impl PluginPushResponse {
+    fn create_docs(op: TransformOperation) -> TransformOperation {
+        op.description("Push alerts to a plugin")
+            .response_with::<201, Json<Self>, _>(|res| {
+                res.description("Alerts were pushed successfully").example({
+                    PluginPushResponse {
+                        status: PluginPushStatus::Ok,
+                        plugin_name: "Plugin 1".to_string(),
+                    }
+                })
+            })
+            .response_with::<500, Json<Self>, _>(|res| {
+                res.description("Failed to push alerts")
+                    .example(PluginPushResponse {
+                        status: PluginPushStatus::Failed {
+                            error_message: "Some error".to_string(),
+                        },
+                        plugin_name: "Plugin 1".to_string(),
+                    })
+            })
+    }
+}
+
+impl IntoResponse for PluginPushResponse {
+    fn into_response(self) -> axum::response::Response {
+        (self.status.status_code(), Json(self)).into_response()
     }
 }
 
@@ -58,6 +118,7 @@ impl PushStatus {
 #[serde(rename_all = "camelCase")]
 pub struct PushResponse {
     pub status: PushStatus,
+    pub plugins: Vec<PluginPushResponse>,
 }
 
 impl PushResponse {
@@ -67,7 +128,17 @@ impl PushResponse {
                 res.description("All alerts were pushed successfully")
                     .example({
                         PushResponse {
-                            status: PushStatus::Full,
+                            status: PushStatus::Ok,
+                            plugins: vec![
+                                PluginPushResponse {
+                                    status: PluginPushStatus::Ok,
+                                    plugin_name: "Plugin 1".to_string(),
+                                },
+                                PluginPushResponse {
+                                    status: PluginPushStatus::Ok,
+                                    plugin_name: "Plugin 2".to_string(),
+                                },
+                            ],
                         }
                     })
             })
@@ -76,6 +147,18 @@ impl PushResponse {
                     .example({
                         PushResponse {
                             status: PushStatus::Partial,
+                            plugins: vec![
+                                PluginPushResponse {
+                                    status: PluginPushStatus::Ok,
+                                    plugin_name: "Plugin 1".to_string(),
+                                },
+                                PluginPushResponse {
+                                    status: PluginPushStatus::Failed {
+                                        error_message: "Some error".to_string(),
+                                    },
+                                    plugin_name: "Plugin 2".to_string(),
+                                },
+                            ],
                         }
                     })
             })
@@ -83,6 +166,20 @@ impl PushResponse {
                 res.description("Failed to push alerts")
                     .example(PushResponse {
                         status: PushStatus::Failed,
+                        plugins: vec![
+                            PluginPushResponse {
+                                status: PluginPushStatus::Failed {
+                                    error_message: "Some error".to_string(),
+                                },
+                                plugin_name: "Plugin 1".to_string(),
+                            },
+                            PluginPushResponse {
+                                status: PluginPushStatus::Failed {
+                                    error_message: "Some error".to_string(),
+                                },
+                                plugin_name: "Plugin 2".to_string(),
+                            },
+                        ],
                     })
             })
     }
@@ -98,12 +195,57 @@ async fn push(
     State(state): State<ApiV1State>,
     Json(alertmanager_push): Json<AlermanagerPush>,
 ) -> PushResponse {
+    let mut plugins = vec![];
+    // TODO: Eventually this should be parallelized
     for plugin in &state.plugins {
-        plugin.push(&alertmanager_push).await.unwrap();
+        match plugin.push_alert(&alertmanager_push).await {
+            Ok(_) => plugins.push(PluginPushResponse {
+                status: PluginPushStatus::Ok,
+                plugin_name: plugin.name().to_string(),
+            }),
+            Err(e) => plugins.push(PluginPushResponse {
+                status: PluginPushStatus::Failed {
+                    error_message: e.to_string(),
+                },
+                plugin_name: plugin.name().to_string(),
+            }),
+        }
     }
 
-    PushResponse {
-        status: PushStatus::Full,
+    let status = if plugins.iter().any(|p| p.status != PluginPushStatus::Ok) {
+        PushStatus::Failed
+    } else if plugins.iter().any(|p| p.status == PluginPushStatus::Ok) {
+        PushStatus::Partial
+    } else {
+        PushStatus::Ok
+    };
+
+    PushResponse { status, plugins }
+}
+
+async fn push_named(
+    State(state): State<ApiV1State>,
+    Path(plugin_name): Path<String>,
+    Json(alertmanager_push): Json<AlermanagerPush>,
+) -> PluginPushResponse {
+    let plugin = state.plugins.iter().find(|p| p.name() == plugin_name);
+    match plugin {
+        Some(plugin) => match plugin.push_alert(&alertmanager_push).await {
+            Ok(_) => PluginPushResponse {
+                status: PluginPushStatus::Ok,
+                plugin_name,
+            },
+            Err(e) => PluginPushResponse {
+                status: PluginPushStatus::Failed {
+                    error_message: e.to_string(),
+                },
+                plugin_name,
+            },
+        },
+        None => PluginPushResponse {
+            status: PluginPushStatus::NotFound,
+            plugin_name,
+        },
     }
 }
 
@@ -123,6 +265,10 @@ async fn main() -> AnyResult<()> {
 
     let v1 = ApiRouter::new()
         .api_route("/push", post_with(push, PushResponse::create_docs))
+        .api_route(
+            "/push_named/:plugin_name",
+            post_with(push_named, PluginPushResponse::create_docs),
+        )
         .with_state(api_v1_state);
 
     let api_v1 = ApiRouter::new().nest("/v1", v1);
