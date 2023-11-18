@@ -16,3 +16,6 @@ anyhow = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
 aide = { workspace = true }
+axum-jsonschema = { version = "0.7.0", features = ["aide"] }
+axum-macros = "0.3.8"
+serde_json = "1.0.108"
