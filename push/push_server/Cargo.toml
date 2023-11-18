@@ -1,0 +1,13 @@
+[package]
+name = "push_server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+openapi = { path = "../../alertmanager_api_v2" }
+push_definitions = { path = "../push_definitions" }
+plugins_definitions = { path = "../../plugins/plugins_definitions" }
+axum = { workspaces = true }
+tokio = { workspaces = true, features = ["full"] }
