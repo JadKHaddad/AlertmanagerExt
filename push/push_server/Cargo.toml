@@ -9,7 +9,10 @@ edition = "2021"
 models = { path = "../../models" }
 push_definitions = { path = "../push_definitions" }
 plugins_definitions = { path = "../../plugins/plugins_definitions" }
+tracing-subscriber = { workspace = true }
 axum = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true }
 anyhow = { workspace = true }
-aide = { workspace = true, features = ["axum"] }
+schemars = { workspace = true }
+serde = { workspace = true }
+aide = { workspace = true }
