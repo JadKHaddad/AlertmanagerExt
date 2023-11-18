@@ -11,3 +11,4 @@ push_definitions = { path = "../push_definitions" }
 plugins_definitions = { path = "../../plugins/plugins_definitions" }
 axum = { workspaces = true }
 tokio = { workspaces = true, features = ["full"] }
+anyhow = { workspaces = true }

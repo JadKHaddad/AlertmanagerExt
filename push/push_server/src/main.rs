@@ -1,3 +1,4 @@
+use anyhow::{Context, Result as AnyResult};
 use axum::{
     extract::State,
     response::IntoResponse,
@@ -7,21 +8,20 @@ use axum::{
 use openapi::models::PostableAlert;
 use plugins_definitions::Plugin;
 use push_definitions::Push;
-use std::{ops::Deref, sync::Arc};
-
+use std::{net::SocketAddr, ops::Deref, sync::Arc};
 trait Serverble: Push + Plugin {}
 
 #[derive(Clone)]
-struct ServerState {
-    inner: Arc<StateInner>,
+struct ApiV2State {
+    inner: Arc<ApiV2StateInner>,
 }
 
-struct StateInner {
+struct ApiV2StateInner {
     plugins: Vec<Box<dyn Serverble>>,
 }
 
-impl Deref for ServerState {
-    type Target = StateInner;
+impl Deref for ApiV2State {
+    type Target = ApiV2StateInner;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -29,7 +29,7 @@ impl Deref for ServerState {
 }
 
 async fn push(
-    State(state): State<ServerState>,
+    State(state): State<ApiV2State>,
     Json(postable_alerts): Json<Vec<PostableAlert>>,
 ) -> impl IntoResponse {
     for plugin in &state.plugins {
@@ -39,24 +39,32 @@ async fn push(
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> AnyResult<()> {
     let plugins: Vec<Box<dyn Serverble>> = vec![];
     for plugin in &plugins {
         plugin.initialize().await.unwrap();
     }
-    let state = ServerState {
-        inner: Arc::new(StateInner { plugins }),
+    let state = ApiV2State {
+        inner: Arc::new(ApiV2StateInner { plugins }),
     };
+
+    let v2 = Router::new()
+        .route("/push", post(push))
+        .with_state(state.clone());
+
+    let api = Router::new().nest("/v2", v2);
 
     // build our application with a single route
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
-        .route("/push", post(push))
+        .nest("/api", api)
         .with_state(state);
 
-    // run it with hyper on localhost:3000
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
-        .unwrap();
+        .context("Server failed")?;
+
+    Ok(())
 }
