@@ -9,6 +9,6 @@ edition = "2021"
 openapi = { path = "../../alertmanager_api_v2" }
 push_definitions = { path = "../push_definitions" }
 plugins_definitions = { path = "../../plugins/plugins_definitions" }
-axum = { workspaces = true }
-tokio = { workspaces = true, features = ["full"] }
-anyhow = { workspaces = true }
+axum = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+anyhow = { workspace = true }
