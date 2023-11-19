@@ -10,6 +10,7 @@ use aide::{
 use anyhow::{Context, Result as AnyResult};
 use axum::{extract::State, Extension};
 use models::AlermanagerPush;
+use postgres_plugin::PostgresPlugin;
 use push_server::{
     api_response::{ApiErrorResponse, ApiErrorResponseType, ApiOkResponse},
     extractors::{ApiJson, ApiPath},
@@ -110,13 +111,37 @@ async fn health() -> ApiOkResponse {
 
 #[tokio::main]
 async fn main() -> AnyResult<()> {
-    let plugins: Vec<Box<dyn PushAndPlugin>> = vec![];
+    if std::env::var_os("RUST_LOG").is_none() {
+        std::env::set_var(
+            "RUST_LOG",
+            "push_server=trace,postgres_plugin=trace,tower_http=info",
+        );
+    }
+
+    tracing_subscriber::fmt()
+        //.with_span_events(tracing_subscriber::fmt::format::FmtSpan::ACTIVE)
+        .with_line_number(false)
+        .with_target(false)
+        .with_timer(tracing_subscriber::fmt::time::UtcTime::rfc_3339())
+        .with_level(true)
+        .with_ansi(true)
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+
+    let postgres_plugin = PostgresPlugin::new(String::from(
+        "postgres://user:password@localhost:5432/database",
+    ))
+    .await
+    .context("Failed to create Postgres plugin.")?;
+
+    let plugins: Vec<Box<dyn PushAndPlugin>> = vec![Box::new(postgres_plugin)];
     for plugin in &plugins {
         plugin
             .initialize()
             .await
             .context(format!("Failed to initialize plugin: {}", plugin.name()))?;
     }
+
     let api_v1_state = ApiV1State {
         inner: Arc::new(ApiV1StateInner { plugins }),
     };

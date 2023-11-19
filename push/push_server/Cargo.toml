@@ -9,6 +9,7 @@ edition = "2021"
 models = { path = "../../models" }
 push_definitions = { path = "../push_definitions" }
 plugins_definitions = { path = "../../plugins/plugins_definitions" }
+postgres_plugin = { path = "../../plugins/postgres_plugin" }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 axum = { workspace = true }

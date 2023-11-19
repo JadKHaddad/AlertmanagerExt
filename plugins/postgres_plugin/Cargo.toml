@@ -1,0 +1,23 @@
+[package]
+name = "postgres_plugin"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+push_definitions = { path = "../../push/push_definitions" }
+plugins_definitions = { path = "../plugins_definitions" }
+models = { path = "../../models" }
+diesel = { version = "2.1.2", features = [
+    "postgres",
+    "time",
+    "i-implement-a-third-party-backend-and-opt-into-breaking-changes", # For the exits clause
+] }
+diesel_migrations = "2.1.0"
+bb8 = "0.8"
+diesel-async = { version = "0.3", features = ["postgres", "bb8"] }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
