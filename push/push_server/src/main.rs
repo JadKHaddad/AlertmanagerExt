@@ -18,7 +18,10 @@ use axum::{
 use models::AlermanagerPush;
 use plugins_definitions::Plugin;
 use push_definitions::Push;
-use push_server::{errors::ApiError, extractors::AideJson};
+use push_server::{
+    errors::ApiError,
+    extractors::{AideJson, AidePath},
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, ops::Deref, sync::Arc};
@@ -243,7 +246,7 @@ async fn push(
 
 async fn push_named(
     State(state): State<ApiV1State>,
-    Path(plugin_name): Path<String>,
+    AidePath(plugin_name): AidePath<String>,
     AideJson(alertmanager_push): AideJson<AlermanagerPush>,
 ) -> PluginPushResponse {
     let plugin = state.plugins.iter().find(|p| p.name() == plugin_name);

@@ -1,5 +1,9 @@
 use aide::operation::OperationIo;
-use axum::response::IntoResponse;
+use axum::{
+    extract::{FromRequestParts, Path},
+    http::request::Parts,
+    response::IntoResponse,
+};
 use axum_jsonschema::JsonSchemaRejection;
 use axum_macros::FromRequest;
 use serde::Serialize;
@@ -31,7 +35,38 @@ impl From<JsonSchemaRejection> for ApiError {
             JsonSchemaRejection::Json(j) => Self::new(&j.to_string()),
             JsonSchemaRejection::Serde(_) => Self::new("invalid request"),
             JsonSchemaRejection::Schema(s) => {
-                Self::new("invalid request").with_details(json!({ "schema_validation": s }))
+                Self::new("invalid request").with_details(json!({ "schemaValidation": s }))
+            }
+        }
+    }
+}
+
+use async_trait::async_trait;
+use serde::de::DeserializeOwned;
+use std::fmt::Debug;
+
+#[derive(OperationIo)]
+pub struct AidePath<T>(pub T);
+
+#[async_trait]
+impl<T, S> FromRequestParts<S> for AidePath<T>
+where
+    T: DeserializeOwned + Debug + Send,
+    S: Send + Sync,
+{
+    type Rejection = ApiError;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let path = Path::<T>::from_request_parts(parts, _state).await;
+        match path {
+            Ok(path) => Ok(AidePath(path.0)),
+            Err(path_rejection) => {
+                let reason = path_rejection.body_text();
+                let status_code = path_rejection.status();
+
+                return Err(ApiError::new("invalid request")
+                    .with_status(status_code)
+                    .with_details(json!({ "path": reason })));
             }
         }
     }

@@ -5,10 +5,10 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AlermanagerPush {
-    /// key identifying the group of alerts (e.g. to deduplicate)
     pub version: String,
-    /// how many alerts have been truncated due to "max_alerts"
+    /// key identifying the group of alerts (e.g. to deduplicate)
     pub group_key: String,
+    /// how many alerts have been truncated due to "max_alerts"
     pub truncated_alerts: i32,
     pub status: Status,
     pub receiver: String,

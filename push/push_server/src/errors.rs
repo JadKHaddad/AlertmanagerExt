@@ -5,6 +5,7 @@ use serde_json::Value;
 
 /// Default error response
 #[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ApiError {
     /// An error message
     pub error: String,
