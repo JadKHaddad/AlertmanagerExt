@@ -6,35 +6,35 @@ use diesel::Insertable;
 #[diesel(table_name = alert_group)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct InsertableAlertGroup<'a> {
-    group_key: &'a str,
-    receiver: &'a str,
-    status: &'a AlertStatusModel,
-    external_url: &'a str,
+    pub group_key: &'a str,
+    pub receiver: &'a str,
+    pub status: &'a AlertStatusModel,
+    pub external_url: &'a str,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = group_label)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct InsertableGroupLabel<'a> {
-    alert_group_id: i32,
-    name: &'a str,
-    value: &'a str,
+    pub alert_group_id: i32,
+    pub name: &'a str,
+    pub value: &'a str,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = common_label)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct InsertableCommonLabel<'a> {
-    alert_group_id: i32,
-    name: &'a str,
-    value: &'a str,
+    pub alert_group_id: i32,
+    pub name: &'a str,
+    pub value: &'a str,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = common_annotation)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct InsertableCommonAnnotation<'a> {
-    alert_group_id: i32,
-    name: &'a str,
-    value: &'a str,
+    pub alert_group_id: i32,
+    pub name: &'a str,
+    pub value: &'a str,
 }

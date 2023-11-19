@@ -6,28 +6,28 @@ use diesel::Insertable;
 #[diesel(table_name = alert)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct InsertableAlert<'a> {
-    alert_group_id: i32,
-    status: &'a AlertStatusModel,
-    starts_at: std::time::SystemTime,
-    ends_at: Option<std::time::SystemTime>,
-    generator_url: &'a str,
-    fingerprint: &'a str,
+    pub alert_group_id: i32,
+    pub status: &'a AlertStatusModel,
+    pub starts_at: chrono::NaiveDateTime,
+    pub ends_at: Option<chrono::NaiveDateTime>,
+    pub generator_url: &'a str,
+    pub fingerprint: &'a str,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = alert_label)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct InsertableAlertLabel<'a> {
-    alert_id: i32,
-    name: &'a str,
-    value: &'a str,
+    pub alert_id: i32,
+    pub name: &'a str,
+    pub value: &'a str,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = alert_annotation)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct InsertableAlertAnnotation<'a> {
-    alert_id: i32,
-    name: &'a str,
-    value: &'a str,
+    pub alert_id: i32,
+    pub name: &'a str,
+    pub value: &'a str,
 }

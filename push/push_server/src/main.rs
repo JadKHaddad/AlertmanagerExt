@@ -109,6 +109,13 @@ async fn health() -> ApiOkResponse {
     ApiOkResponse {}
 }
 
+async fn health_named(
+    State(state): State<ApiV1State>,
+    ApiPath(plugin_name): ApiPath<String>,
+) -> &'static str {
+    todo!()
+}
+
 #[tokio::main]
 async fn main() -> AnyResult<()> {
     if std::env::var_os("RUST_LOG").is_none() {

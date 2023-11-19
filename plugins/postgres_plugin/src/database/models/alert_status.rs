@@ -7,6 +7,7 @@ use diesel::{
     serialize::{self, Output, ToSql},
     sql_types::VarChar,
 };
+use models::Status as AlermanagerPushStatus;
 use std::io::Write;
 
 #[derive(Clone, Debug, FromSqlRow, AsExpression)]
@@ -14,6 +15,15 @@ use std::io::Write;
 pub enum AlertStatusModel {
     Resolved,
     Firing,
+}
+
+impl From<&AlermanagerPushStatus> for AlertStatusModel {
+    fn from(status: &AlermanagerPushStatus) -> Self {
+        match status {
+            AlermanagerPushStatus::Resolved => AlertStatusModel::Resolved,
+            AlermanagerPushStatus::Firing => AlertStatusModel::Firing,
+        }
+    }
 }
 
 impl<DB> ToSql<AlertStatus, DB> for AlertStatusModel

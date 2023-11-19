@@ -7,9 +7,17 @@ pub struct InitializeError {
     pub reason: String,
 }
 
+#[derive(ThisError, Debug)]
+#[error("Plugin health check failed: {reason}")]
+pub struct HealthError {
+    pub reason: String,
+}
+
 #[async_trait]
 pub trait Plugin: Send + Sync + 'static {
-    fn name(&self) -> &'static str;
+    fn name(&self) -> String;
 
     async fn initialize(&self) -> Result<(), InitializeError>;
+
+    async fn health(&self) -> Result<(), HealthError>;
 }

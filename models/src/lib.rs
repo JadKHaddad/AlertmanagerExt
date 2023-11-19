@@ -16,6 +16,7 @@ pub struct AlermanagerPush {
     pub common_labels: HashMap<String, String>,
     pub common_annotations: HashMap<String, String>,
     /// backlink to the Alertmanager.
+    #[serde(rename = "externalURL")]
     pub external_url: String,
     pub alerts: Vec<Alert>,
 }
@@ -38,6 +39,7 @@ pub struct Alert {
     /// rfc3339
     pub ends_at: String,
     /// identifies the entity that caused the alert
+    #[serde(rename = "generatorURL")]
     pub generator_url: String,
     /// fingerprint to identify the alert
     pub fingerprint: String,
