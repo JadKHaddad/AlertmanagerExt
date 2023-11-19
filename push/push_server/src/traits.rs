@@ -1,6 +1,10 @@
 use aide::transform::{TransformOperation, TransformResponse};
 use axum::http::StatusCode;
+use plugins_definitions::Plugin;
+use push_definitions::Push;
 use serde::Serialize;
+
+pub trait PushAndPlugin: Push + Plugin {}
 
 pub trait HasStatusCode {
     fn status_code(&self) -> StatusCode;

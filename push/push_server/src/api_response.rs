@@ -3,7 +3,7 @@ use axum::{http::StatusCode, response::IntoResponse, Json};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::api_traits::{HasResponseDocs, HasStatusCode};
+use crate::traits::{HasResponseDocs, HasStatusCode};
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, OperationIo)]
 #[serde(rename_all = "camelCase")]
