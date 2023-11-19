@@ -1255,6 +1255,7 @@ dependencies = [
  "models",
  "plugins_definitions",
  "push_definitions",
+ "scoped-futures",
  "tokio",
  "tracing",
 ]
