@@ -1,6 +1,6 @@
 use aide::{
     axum::{
-        routing::{get, post_with},
+        routing::{get, get_with, post_with},
         ApiRouter, IntoApiResponse,
     },
     openapi::{Info, OpenApi},
@@ -9,18 +9,14 @@ use aide::{
     OperationIo,
 };
 use anyhow::{Context, Result as AnyResult};
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::IntoResponse,
-    Extension,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Extension};
 use models::AlermanagerPush;
 use plugins_definitions::Plugin;
 use push_definitions::Push;
 use push_server::{
-    errors::ApiError,
-    extractors::{AideJson, AidePath},
+    api_response::{ApiErrorResponse, ApiErrorResponseType, ApiOkResponse},
+    api_traits::{HasOperationDocs, HasResponseDocs, HasStatusCode},
+    extractors::{ApiJson, ApiPath},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -57,7 +53,7 @@ pub enum PushStatus {
     Failed,
 }
 
-impl PushStatus {
+impl HasStatusCode for PushStatus {
     fn status_code(&self) -> StatusCode {
         match self {
             PushStatus::Ok => StatusCode::ACCEPTED,
@@ -83,7 +79,7 @@ pub enum PluginPushStatus {
     },
 }
 
-impl PluginPushStatus {
+impl HasStatusCode for PluginPushStatus {
     fn status_code(&self) -> StatusCode {
         match self {
             PluginPushStatus::Ok => StatusCode::ACCEPTED,
@@ -103,10 +99,10 @@ pub struct PluginPushResponse {
     pub plugin_name: String,
 }
 
-impl PluginPushResponse {
-    fn create_docs(op: TransformOperation) -> TransformOperation {
+impl HasOperationDocs for PluginPushResponse {
+    fn operation_docs(op: TransformOperation) -> TransformOperation {
         op.description("Push alerts to a plugin")
-            .response_with::<201, AideJson<Self>, _>(|res| {
+            .response_with::<201, ApiJson<Self>, _>(|res| {
                 res.description("Alerts were pushed successfully").example({
                     PluginPushResponse {
                         status: PluginPushStatus::Ok,
@@ -114,7 +110,7 @@ impl PluginPushResponse {
                     }
                 })
             })
-            .response_with::<500, AideJson<Self>, _>(|res| {
+            .response_with::<500, ApiJson<Self>, _>(|res| {
                 res.description("Failed to push alerts")
                     .example(PluginPushResponse {
                         status: PluginPushStatus::Failed {
@@ -128,7 +124,7 @@ impl PluginPushResponse {
 
 impl IntoResponse for PluginPushResponse {
     fn into_response(self) -> axum::response::Response {
-        (self.status.status_code(), AideJson(self)).into_response()
+        (self.status.status_code(), ApiJson(self)).into_response()
     }
 }
 
@@ -142,10 +138,10 @@ pub struct PushResponse {
     pub plugins: Vec<PluginPushResponse>,
 }
 
-impl PushResponse {
-    fn create_docs(op: TransformOperation) -> TransformOperation {
+impl HasOperationDocs for PushResponse {
+    fn operation_docs(op: TransformOperation) -> TransformOperation {
         op.description("Push alerts to plugins")
-            .response_with::<201, AideJson<Self>, _>(|res| {
+            .response_with::<201, ApiJson<Self>, _>(|res| {
                 res.description("All alerts were pushed successfully")
                     .example({
                         PushResponse {
@@ -163,7 +159,7 @@ impl PushResponse {
                         }
                     })
             })
-            .response_with::<207, AideJson<Self>, _>(|res| {
+            .response_with::<207, ApiJson<Self>, _>(|res| {
                 res.description("Some alerts were pushed successfully")
                     .example({
                         PushResponse {
@@ -183,7 +179,7 @@ impl PushResponse {
                         }
                     })
             })
-            .response_with::<500, AideJson<Self>, _>(|res| {
+            .response_with::<500, ApiJson<Self>, _>(|res| {
                 res.description("Failed to push alerts")
                     .example(PushResponse {
                         status: PushStatus::Failed,
@@ -208,13 +204,13 @@ impl PushResponse {
 
 impl IntoResponse for PushResponse {
     fn into_response(self) -> axum::response::Response {
-        (self.status.status_code(), AideJson(self)).into_response()
+        (self.status.status_code(), ApiJson(self)).into_response()
     }
 }
 
 async fn push(
     State(state): State<ApiV1State>,
-    AideJson(alertmanager_push): AideJson<AlermanagerPush>,
+    ApiJson(alertmanager_push): ApiJson<AlermanagerPush>,
 ) -> PushResponse {
     let mut plugins = vec![];
     // TODO: Eventually this should be parallelized
@@ -246,8 +242,8 @@ async fn push(
 
 async fn push_named(
     State(state): State<ApiV1State>,
-    AidePath(plugin_name): AidePath<String>,
-    AideJson(alertmanager_push): AideJson<AlermanagerPush>,
+    ApiPath(plugin_name): ApiPath<String>,
+    ApiJson(alertmanager_push): ApiJson<AlermanagerPush>,
 ) -> PluginPushResponse {
     let plugin = state.plugins.iter().find(|p| p.name() == plugin_name);
     match plugin {
@@ -271,30 +267,53 @@ async fn push_named(
 }
 
 async fn serve_api(Extension(api): Extension<OpenApi>) -> impl IntoApiResponse {
-    AideJson(api)
+    ApiJson(api)
+}
+
+async fn not_found() -> ApiErrorResponse {
+    ApiErrorResponse {
+        error_type: ApiErrorResponseType::NotFound,
+    }
+}
+
+async fn health() -> ApiOkResponse {
+    ApiOkResponse {}
 }
 
 #[tokio::main]
 async fn main() -> AnyResult<()> {
     let plugins: Vec<Box<dyn Serverble>> = vec![];
     for plugin in &plugins {
-        plugin.initialize().await.unwrap();
+        plugin
+            .initialize()
+            .await
+            .context(format!("Failed to initialize plugin: {}", plugin.name()))?;
     }
     let api_v1_state = ApiV1State {
         inner: Arc::new(ApiV1StateInner { plugins }),
     };
 
     let v1 = ApiRouter::new()
-        .api_route("/push", post_with(push, PushResponse::create_docs))
+        .api_route("/push", post_with(push, PushResponse::operation_docs))
         .api_route(
             "/push_named/:plugin_name",
-            post_with(push_named, PluginPushResponse::create_docs),
+            post_with(push_named, PluginPushResponse::operation_docs),
         )
         .with_state(api_v1_state);
 
     let api_v1 = ApiRouter::new().nest("/v1", v1);
 
     let app = ApiRouter::new()
+        .fallback(not_found)
+        .api_route(
+            "/health",
+            get_with(health, |op| {
+                op.description("Health check")
+                    .response_with::<200, ApiJson<ApiOkResponse>, _>(|res| {
+                        res.description("API is healthy").example(ApiOkResponse {})
+                    })
+            }),
+        )
         .route("/redoc", Redoc::new("/api.json").axum_route())
         .route("/api.json", get(serve_api))
         .nest_api_service("/api", api_v1);
@@ -302,7 +321,6 @@ async fn main() -> AnyResult<()> {
     let mut open_api = OpenApi {
         info: Info {
             title: "AlertmanagerExt".to_string(),
-
             ..Info::default()
         },
         ..OpenApi::default()
@@ -324,12 +342,5 @@ async fn main() -> AnyResult<()> {
 fn api_docs(api: TransformOpenApi) -> TransformOpenApi {
     api.title("AlertmanagerExt API")
         .summary("API for AlertmanagerExt")
-        .default_response_with::<AideJson<ApiError>, _>(|res| {
-            res.example(ApiError {
-                error: "some error happened".to_string(),
-                error_details: None,
-                // This is not visible.
-                status: StatusCode::IM_A_TEAPOT,
-            })
-        })
+        .default_response_with::<ApiJson<ApiErrorResponse>, _>(ApiErrorResponse::response_docs)
 }

@@ -923,6 +923,7 @@ name = "plugins_definitions"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "thiserror",
 ]
 
 [[package]]
@@ -946,6 +947,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "models",
+ "thiserror",
 ]
 
 [[package]]
