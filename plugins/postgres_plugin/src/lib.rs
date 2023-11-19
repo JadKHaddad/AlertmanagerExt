@@ -9,6 +9,8 @@ use plugins_definitions::{InitializeError, Plugin};
 use push_definitions::{Push, PushError};
 use tokio::task::JoinHandle;
 
+mod database;
+
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
