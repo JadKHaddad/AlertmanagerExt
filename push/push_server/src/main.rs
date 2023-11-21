@@ -48,13 +48,15 @@ async fn main() -> AnyResult<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    let postgres_plugin = PostgresPlugin::new(String::from(
-        "postgres://user:password@localhost:5432/database",
-    ))
+    let postgres_plugin = PostgresPlugin::new(
+        String::from("postgres_plugin_1"),
+        String::from("postgres://user:password@localhost:5432/database"),
+    )
     .await
     .context("Failed to create Postgres plugin.")?;
 
     let plugins: Vec<Box<dyn PushAndPlugin>> = vec![Box::new(postgres_plugin)];
+    tracing::info!("Initializing plugins.");
     for plugin in &plugins {
         plugin
             .initialize()

@@ -15,7 +15,7 @@ pub struct HealthError {
 
 #[async_trait]
 pub trait Plugin: Send + Sync + 'static {
-    fn name(&self) -> String;
+    fn name(&self) -> &str;
 
     async fn initialize(&self) -> Result<(), InitializeError>;
 

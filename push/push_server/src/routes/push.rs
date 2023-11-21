@@ -177,24 +177,29 @@ impl IntoResponse for PushResponse {
     }
 }
 
+#[tracing::instrument(name = "push", skip_all, fields(group_key = alertmanager_push.group_key))]
 pub async fn push(
     State(state): State<ApiV1State>,
     ApiJson(alertmanager_push): ApiJson<AlermanagerPush>,
 ) -> PushResponse {
     let mut plugins = vec![];
     // TODO: Eventually this should be parallelized
+    tracing::trace!("Pushing alerts to plugins.");
     for plugin in &state.plugins {
         match plugin.push_alert(&alertmanager_push).await {
             Ok(_) => plugins.push(PluginPushResponse {
                 status: PluginPushStatus::Ok,
                 plugin_name: plugin.name().to_string(),
             }),
-            Err(e) => plugins.push(PluginPushResponse {
-                status: PluginPushStatus::Failed {
-                    error_message: e.to_string(),
-                },
-                plugin_name: plugin.name().to_string(),
-            }),
+            Err(error) => {
+                tracing::error!(name=plugin.name(), %error, "Failed to push alerts to plugin.");
+                plugins.push(PluginPushResponse {
+                    status: PluginPushStatus::Failed {
+                        error_message: error.to_string(),
+                    },
+                    plugin_name: plugin.name().to_string(),
+                })
+            }
         }
     }
 
@@ -209,11 +214,13 @@ pub async fn push(
     PushResponse { status, plugins }
 }
 
+#[tracing::instrument(name = "push_named",  skip_all, fields(group_key = alertmanager_push.group_key))]
 pub async fn push_named(
     State(state): State<ApiV1State>,
     ApiPath(plugin_name): ApiPath<String>,
     ApiJson(alertmanager_push): ApiJson<AlermanagerPush>,
 ) -> PluginPushResponse {
+    tracing::trace!(name = plugin_name, "Pushing alerts to plugin.");
     let plugin = state.plugins.iter().find(|p| p.name() == plugin_name);
     match plugin {
         Some(plugin) => match plugin.push_alert(&alertmanager_push).await {
@@ -221,12 +228,15 @@ pub async fn push_named(
                 status: PluginPushStatus::Ok,
                 plugin_name,
             },
-            Err(e) => PluginPushResponse {
-                status: PluginPushStatus::Failed {
-                    error_message: e.to_string(),
-                },
-                plugin_name,
-            },
+            Err(error) => {
+                tracing::error!(%error, name=plugin.name() , "Failed to push alerts to plugin.");
+                PluginPushResponse {
+                    status: PluginPushStatus::Failed {
+                        error_message: error.to_string(),
+                    },
+                    plugin_name,
+                }
+            }
         },
         None => PluginPushResponse {
             status: PluginPushStatus::NotFound,

@@ -40,12 +40,13 @@ impl From<diesel::result::Error> for PushErrorWrapper {
     }
 }
 pub struct PostgresPlugin {
+    name: String,
     connection_string: String,
     pool: Pool,
 }
 
 impl PostgresPlugin {
-    pub async fn new(connection_string: String) -> AnyResult<Self> {
+    pub async fn new(name: String, connection_string: String) -> AnyResult<Self> {
         let manager = AsyncDieselConnectionManager::new(connection_string.clone());
         let pool = bb8::Pool::builder()
             .max_size(15)
@@ -54,6 +55,7 @@ impl PostgresPlugin {
             .context("Failed to create pool.")?;
 
         Ok(Self {
+            name,
             connection_string,
             pool,
         })
@@ -62,11 +64,11 @@ impl PostgresPlugin {
 
 #[async_trait]
 impl Plugin for PostgresPlugin {
-    fn name(&self) -> String {
-        String::from("Postgres")
+    fn name(&self) -> &str {
+        &self.name
     }
 
-    #[tracing::instrument(name = "PostgresPlugin initialize", skip_all)]
+    #[tracing::instrument(name = "PostgresPlugin initialize", skip(self), fields(name = %self.name))]
     async fn initialize(&self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
         let connection_string = self.connection_string.clone();
@@ -94,7 +96,7 @@ impl Plugin for PostgresPlugin {
         Ok(())
     }
 
-    #[tracing::instrument(name = "PostgresPlugin health", skip_all)]
+    #[tracing::instrument(name = "PostgresPlugin health", skip(self), fields(self.name = %self.name))]
     async fn health(&self) -> Result<(), HealthError> {
         tracing::trace!("Checking health.");
         let _conn = self.pool.get().await.map_err(|error| HealthError {
@@ -189,15 +191,20 @@ impl Push for PostgresPlugin {
 
                 tracing::trace!("Inserting alerts.");
                 for alert in alertmanager_push.alerts.iter() {
+                    let fingerprint_in_error_message =
+                        format!("fingerprint: {}", alert.fingerprint);
+
+                    // TODO: Error message (got: act. starts_at)
                     let starts_at = chrono::DateTime::parse_from_rfc3339(&alert.starts_at)
                         .map_err(|error| PushError {
-                            reason: format!("Failed to parse starts_at: {}", error),
+                            reason: format!("Failed to parse starts_at, {fingerprint_in_error_message}, error: {error}")
                         })?
                         .naive_utc();
-
+                    
+                    // TODO: Error message (got: act. ends_at)
                     let ends_at = chrono::DateTime::parse_from_rfc3339(&alert.ends_at)
                         .map_err(|error| PushError {
-                            reason: format!("Failed to parse starts_at: {}", error),
+                            reason: format!("Failed to parse ends_at: {fingerprint_in_error_message}, error: {error}")
                         })?
                         .naive_utc();
 
@@ -222,9 +229,10 @@ impl Push for PostgresPlugin {
                         .get_result::<i32>(&mut conn)
                         .await
                         .map_err(|error| PushError {
-                            reason: format!("Failed to insert alert: {}", error),
+                            reason: format!("Failed to insert alert, {fingerprint_in_error_message}, error: {error}")
                         })?;
-
+                    
+                    // TODO: Annotations and labels in error messages
                     for label in alert.labels.iter() {
                         let label = database::models::alert::InsertableAlertLabel {
                             alert_id,
@@ -237,7 +245,7 @@ impl Push for PostgresPlugin {
                             .execute(&mut conn)
                             .await
                             .map_err(|error| PushError {
-                                reason: format!("Failed to insert alert label: {}", error),
+                                reason: format!("Failed to insert alert label, {fingerprint_in_error_message}, error: {error}")
                             })?;
                     }
 
@@ -253,7 +261,7 @@ impl Push for PostgresPlugin {
                             .execute(&mut conn)
                             .await
                             .map_err(|error| PushError {
-                                reason: format!("Failed to insert alert annotation: {}", error),
+                                reason: format!("Failed to insert alert annotation, {fingerprint_in_error_message}, error: {error}")
                             })?;
                     }
                 }
