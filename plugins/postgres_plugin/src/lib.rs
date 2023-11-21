@@ -18,7 +18,7 @@ const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
 
-struct PushErrorWrapper(pub PushError);
+pub struct PushErrorWrapper(pub PushError);
 
 impl From<PushErrorWrapper> for PushError {
     fn from(wrapper: PushErrorWrapper) -> Self {

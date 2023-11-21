@@ -1,4 +1,4 @@
-use crate::api_response::{ApiErrorResponseType, PathInvalid, PayloadInvalid};
+use crate::error_response::{ErrorResponseType, PathInvalid, PayloadInvalid};
 use aide::operation::OperationIo;
 use async_trait::async_trait;
 use axum::response::IntoResponse;
@@ -21,7 +21,7 @@ where
     T: DeserializeOwned + Debug + Send,
     S: Send + Sync,
 {
-    type Rejection = ApiErrorResponseType;
+    type Rejection = ErrorResponseType;
 
     #[tracing::instrument(name = "path_extractor", skip_all)]
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
@@ -42,7 +42,7 @@ where
                     reason,
                 };
 
-                let error = ApiErrorResponseType::PathInvalid { path_invalid };
+                let error = ErrorResponseType::PathInvalid { path_invalid };
                 Err(error)
             }
         }
@@ -62,7 +62,7 @@ where
     B::Error: Into<BoxError>,
     S: Send + Sync,
 {
-    type Rejection = ApiErrorResponseType;
+    type Rejection = ErrorResponseType;
 
     #[tracing::instrument(name = "json_extractor", skip_all)]
     async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
@@ -87,7 +87,7 @@ where
                     reason,
                 };
 
-                let error = ApiErrorResponseType::PayloadInvalid { payload_invalid };
+                let error = ErrorResponseType::PayloadInvalid { payload_invalid };
                 Err(error)
             }
         }

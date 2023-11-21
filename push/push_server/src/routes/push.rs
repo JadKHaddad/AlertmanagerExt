@@ -1,10 +1,12 @@
 use aide::{transform::TransformOperation, OperationIo};
-use axum::{http::StatusCode, response::IntoResponse};
+use axum::{extract::State, http::StatusCode, response::IntoResponse};
+use models::AlermanagerPush;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    extractors::ApiJson,
+    extractors::{ApiJson, ApiPath},
+    state::ApiV1State,
     traits::{HasOperationDocs, HasStatusCode},
 };
 
@@ -172,5 +174,63 @@ impl HasOperationDocs for PushResponse {
 impl IntoResponse for PushResponse {
     fn into_response(self) -> axum::response::Response {
         (self.status.status_code(), ApiJson(self)).into_response()
+    }
+}
+
+pub async fn push(
+    State(state): State<ApiV1State>,
+    ApiJson(alertmanager_push): ApiJson<AlermanagerPush>,
+) -> PushResponse {
+    let mut plugins = vec![];
+    // TODO: Eventually this should be parallelized
+    for plugin in &state.plugins {
+        match plugin.push_alert(&alertmanager_push).await {
+            Ok(_) => plugins.push(PluginPushResponse {
+                status: PluginPushStatus::Ok,
+                plugin_name: plugin.name().to_string(),
+            }),
+            Err(e) => plugins.push(PluginPushResponse {
+                status: PluginPushStatus::Failed {
+                    error_message: e.to_string(),
+                },
+                plugin_name: plugin.name().to_string(),
+            }),
+        }
+    }
+
+    let status = if plugins.iter().any(|p| p.status != PluginPushStatus::Ok) {
+        PushStatus::Failed
+    } else if plugins.iter().any(|p| p.status == PluginPushStatus::Ok) {
+        PushStatus::Partial
+    } else {
+        PushStatus::Ok
+    };
+
+    PushResponse { status, plugins }
+}
+
+pub async fn push_named(
+    State(state): State<ApiV1State>,
+    ApiPath(plugin_name): ApiPath<String>,
+    ApiJson(alertmanager_push): ApiJson<AlermanagerPush>,
+) -> PluginPushResponse {
+    let plugin = state.plugins.iter().find(|p| p.name() == plugin_name);
+    match plugin {
+        Some(plugin) => match plugin.push_alert(&alertmanager_push).await {
+            Ok(_) => PluginPushResponse {
+                status: PluginPushStatus::Ok,
+                plugin_name,
+            },
+            Err(e) => PluginPushResponse {
+                status: PluginPushStatus::Failed {
+                    error_message: e.to_string(),
+                },
+                plugin_name,
+            },
+        },
+        None => PluginPushResponse {
+            status: PluginPushStatus::NotFound,
+            plugin_name,
+        },
     }
 }
