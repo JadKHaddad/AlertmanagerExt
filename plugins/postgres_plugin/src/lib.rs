@@ -64,6 +64,10 @@ impl PostgresPlugin {
 
 #[async_trait]
 impl Plugin for PostgresPlugin {
+    fn type_(&self) -> &str {
+        "PostgresPlugin"
+    }
+
     fn name(&self) -> &str {
         &self.name
     }

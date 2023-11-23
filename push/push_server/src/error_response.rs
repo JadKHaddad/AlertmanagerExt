@@ -17,13 +17,11 @@ pub struct ErrorResponse {
 #[serde(rename_all = "camelCase")]
 pub enum ErrorResponseType {
     /// Payload is invalid
-    PayloadInvalid { payload_invalid: PayloadInvalid },
+    PayloadInvalid(PayloadInvalid),
     /// Path is invalid
-    PathInvalid { path_invalid: PathInvalid },
+    PathInvalid(PathInvalid),
     /// Internal server error
-    InternalServerError {
-        internal_server_error: InternalServerError,
-    },
+    InternalServerError(InternalServerError),
     /// Not found
     NotFound,
 }
@@ -48,7 +46,7 @@ pub struct PathInvalid {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InternalServerError {
-    pub(crate) reason: String,
+    reason: String,
 }
 
 impl<E> From<E> for InternalServerError
@@ -56,6 +54,7 @@ where
     E: Into<anyhow::Error> + std::fmt::Display,
 {
     fn from(error: E) -> Self {
+        tracing::error!(%error, "Internal server error");
         InternalServerError {
             reason: error.to_string(),
         }
@@ -65,28 +64,28 @@ where
 impl HasStatusCode for ErrorResponseType {
     fn status_code(&self) -> StatusCode {
         match self {
-            ErrorResponseType::PayloadInvalid { payload_invalid } => payload_invalid.status_code,
-            ErrorResponseType::PathInvalid { path_invalid } => path_invalid.status_code,
+            ErrorResponseType::PayloadInvalid(payload_invalid) => payload_invalid.status_code,
+            ErrorResponseType::PathInvalid(path_invalid) => path_invalid.status_code,
             ErrorResponseType::InternalServerError { .. } => StatusCode::INTERNAL_SERVER_ERROR,
             ErrorResponseType::NotFound => StatusCode::NOT_FOUND,
         }
     }
 }
 
-impl<E> From<E> for ErrorResponseType
+impl<E> From<E> for ErrorResponse
 where
     E: Into<anyhow::Error> + std::fmt::Display,
 {
     fn from(error: E) -> Self {
-        ErrorResponseType::InternalServerError {
-            internal_server_error: InternalServerError::from(error),
+        ErrorResponse {
+            error_type: ErrorResponseType::InternalServerError(InternalServerError::from(error)),
         }
     }
 }
 
-impl IntoResponse for ErrorResponseType {
-    fn into_response(self) -> axum::response::Response {
-        (self.status_code(), Json(ErrorResponse { error_type: self })).into_response()
+impl From<ErrorResponseType> for ErrorResponse {
+    fn from(error_type: ErrorResponseType) -> Self {
+        Self { error_type }
     }
 }
 
@@ -102,17 +101,13 @@ impl HasResponseDocs for ErrorResponse {
         R: Serialize,
         ErrorResponse: Into<R>,
     {
-        res.description("Error response")
-            .example(ErrorResponse {
-                error_type: ErrorResponseType::PayloadInvalid {
-                    payload_invalid: PayloadInvalid {
-                        status_code: StatusCode::BAD_REQUEST,
-                        reason: "Invalid payload".to_string(),
-                        expected_schema:
-                            r#"{"type":"object","properties":{"apiOk":{"type":"boolean"}}}"#
-                                .to_string(),
-                    },
-                },
-            })
+        res.description("Error response").example(ErrorResponse {
+            error_type: ErrorResponseType::PayloadInvalid(PayloadInvalid {
+                status_code: StatusCode::BAD_REQUEST,
+                reason: "Invalid payload".to_string(),
+                expected_schema: r#"{"type":"object","properties":{"apiOk":{"type":"boolean"}}}"#
+                    .to_string(),
+            }),
+        })
     }
 }

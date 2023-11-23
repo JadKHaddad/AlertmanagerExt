@@ -15,9 +15,15 @@ pub struct HealthError {
 
 #[async_trait]
 pub trait Plugin: Send + Sync + 'static {
+    /// For prometheus labels
+    fn type_(&self) -> &str;
+
+    /// For prometheus labels
     fn name(&self) -> &str;
 
+    /// Initialize the plugin on startup
     async fn initialize(&self) -> Result<(), InitializeError>;
 
+    /// Health check
     async fn health(&self) -> Result<(), HealthError>;
 }
