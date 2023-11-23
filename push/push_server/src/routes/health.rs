@@ -52,7 +52,7 @@ pub enum PluginHealthStatus {
     /// Plugin is unhealthy
     Unhealthy {
         /// Reason why plugin is unhealthy
-        reason: String,
+        message: String,
     },
 }
 
@@ -115,7 +115,7 @@ async fn match_plugin_health(plugin: &Arc<dyn PushAndPlugin>) -> PlugingHealthRe
             tracing::error!(name=plugin.name(), %error, "Plugin is unhealthy.");
             PlugingHealthResponse {
                 status: PluginHealthStatus::Unhealthy {
-                    reason: error.to_string(),
+                    message: error.to_string(),
                 },
                 plugin_name: plugin.name().to_string(),
             }

@@ -1,6 +1,7 @@
 use crate::database::models::alert_status::AlertStatusModel;
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
+use chrono::Duration;
 use diesel::result::Error as DieselError;
 use diesel::{Connection, PgConnection};
 use diesel_async::{pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection};
@@ -112,6 +113,7 @@ impl PostgresPlugin {
         let manager = AsyncDieselConnectionManager::new(connection_string.clone());
         let pool = bb8::Pool::builder()
             .max_size(15)
+            .connection_timeout(std::time::Duration::from_secs(3))
             .build(manager)
             .await
             .context("Failed to create pool.")?;

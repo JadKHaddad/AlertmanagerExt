@@ -44,7 +44,7 @@ pub enum PluginPushStatus {
     /// Push failed
     Failed {
         /// Error message
-        reason: String,
+        message: String,
     },
 }
 
@@ -104,7 +104,7 @@ async fn match_plugin_push(
             tracing::error!(name=plugin.name(), %error, "Failed to push alerts to plugin.");
             PluginPushResponse {
                 status: PluginPushStatus::Failed {
-                    reason: error.to_string(),
+                    message: error.to_string(),
                 },
                 plugin_name: plugin.name().to_string(),
             }
@@ -151,7 +151,7 @@ pub async fn push(
                     tracing::error!(name=plugin_response_handle.plugin_name, %error, "Plugin push handler was cancelled.");
                     PluginPushResponse {
                         status: PluginPushStatus::Failed {
-                            reason: error.to_string(),
+                            message: error.to_string(),
                         },
                         plugin_name: plugin_response_handle.plugin_name,
                     }
@@ -159,7 +159,7 @@ pub async fn push(
                     tracing::error!(name=plugin_response_handle.plugin_name, %error, "Plugin push handler panicked.");
                     PluginPushResponse {
                         status: PluginPushStatus::Failed {
-                            reason: error.to_string(),
+                            message: error.to_string(),
                         },
                         plugin_name: plugin_response_handle.plugin_name,
                     }
