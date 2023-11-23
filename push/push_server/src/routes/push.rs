@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use models::AlermanagerPush;
 use schemars::JsonSchema;
@@ -7,7 +9,7 @@ use tokio::task::JoinHandle;
 use crate::{
     extractors::{ApiJson, ApiPath},
     state::ApiState,
-    traits::HasStatusCode,
+    traits::{HasStatusCode, PushAndPlugin},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
@@ -90,11 +92,37 @@ impl IntoResponse for PushResponse {
     }
 }
 
+/// Avoids duplicate code in push and push_named
+async fn match_plugin_push(
+    plugin: &Arc<dyn PushAndPlugin>,
+    alertmanager_push: &AlermanagerPush,
+) -> PluginPushResponse {
+    match plugin.push_alert(alertmanager_push).await {
+        Ok(_) => PluginPushResponse {
+            status: PluginPushStatus::Ok,
+            plugin_name: plugin.name().to_string(),
+        },
+        Err(error) => {
+            tracing::error!(%error, name=plugin.name() , "Failed to push alerts to plugin.");
+            PluginPushResponse {
+                status: PluginPushStatus::Failed {
+                    error_message: error.to_string(),
+                },
+                plugin_name: plugin.name().to_string(),
+            }
+        }
+    }
+}
+
+/// Join handle for a plugin push response
 struct PluginPushResponseJoinHandle {
+    /// Join handle
     join_handle: JoinHandle<PluginPushResponse>,
+    /// Name of the plugin, in case the join handle panics or is cancelled, we still want to know which plugin it was
     plugin_name: String,
 }
 
+/// Push alerts to all plugins asynchronously
 #[tracing::instrument(name = "push", skip_all, fields(group_key = alertmanager_push.group_key))]
 pub async fn push(
     State(state): State<ApiState>,
@@ -107,23 +135,8 @@ pub async fn push(
     for plugin in &state.plugins {
         let plugin_c = plugin.clone();
         let alertmanager_push_c = alertmanager_push.clone();
-        let handle = tokio::spawn(async move {
-            match plugin_c.push_alert(&alertmanager_push_c).await {
-                Ok(_) => PluginPushResponse {
-                    status: PluginPushStatus::Ok,
-                    plugin_name: plugin_c.name().to_string(),
-                },
-                Err(error) => {
-                    tracing::error!(name=plugin_c.name(), %error, "Failed to push alerts to plugin.");
-                    PluginPushResponse {
-                        status: PluginPushStatus::Failed {
-                            error_message: error.to_string(),
-                        },
-                        plugin_name: plugin_c.name().to_string(),
-                    }
-                }
-            }
-        });
+        let handle =
+            tokio::spawn(async move { match_plugin_push(&plugin_c, &alertmanager_push_c).await });
         plugin_response_handles.push(PluginPushResponseJoinHandle {
             join_handle: handle,
             plugin_name: plugin.name().to_string(),
@@ -176,6 +189,7 @@ pub async fn push(
     }
 }
 
+/// Push alerts to a specific plugin
 #[tracing::instrument(name = "push_named",  skip_all, fields(group_key = alertmanager_push.group_key))]
 pub async fn push_named(
     State(state): State<ApiState>,
@@ -185,21 +199,7 @@ pub async fn push_named(
     tracing::trace!(name = plugin_name, "Pushing alerts to plugin.");
     let plugin = state.plugins.iter().find(|p| p.name() == plugin_name);
     match plugin {
-        Some(plugin) => match plugin.push_alert(&alertmanager_push).await {
-            Ok(_) => PluginPushResponse {
-                status: PluginPushStatus::Ok,
-                plugin_name,
-            },
-            Err(error) => {
-                tracing::error!(%error, name=plugin.name() , "Failed to push alerts to plugin.");
-                PluginPushResponse {
-                    status: PluginPushStatus::Failed {
-                        error_message: error.to_string(),
-                    },
-                    plugin_name,
-                }
-            }
-        },
+        Some(plugin) => match_plugin_push(plugin, &alertmanager_push).await,
         None => PluginPushResponse {
             status: PluginPushStatus::NotFound,
             plugin_name,
