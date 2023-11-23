@@ -1,7 +1,6 @@
 use crate::database::models::alert_status::AlertStatusModel;
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
-use chrono::Duration;
 use diesel::result::Error as DieselError;
 use diesel::{Connection, PgConnection};
 use diesel_async::{pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection};
@@ -9,8 +8,8 @@ use diesel_async::{AsyncConnection, RunQueryDsl};
 use diesel_migrations::MigrationHarness;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use models::AlermanagerPush;
-use plugins_definitions::{HealthError, InitializeError, Plugin};
-use push_definitions::{Push, PushError};
+use plugins_definitions::{HealthError, Plugin};
+use push_definitions::{InitializeError, Push, PushError};
 use scoped_futures::ScopedFutureExt;
 use thiserror::Error as ThisError;
 use tokio::task::JoinHandle;
@@ -136,7 +135,21 @@ impl Plugin for PostgresPlugin {
         &self.name
     }
 
-    #[tracing::instrument(name = "PostgresPlugin initialize", skip(self), fields(name = %self.name))]
+    #[tracing::instrument(name = "PostgresPlugin health", skip(self), fields(self.name = %self.name))]
+    async fn health(&self) -> Result<(), HealthError> {
+        tracing::trace!("Checking health.");
+        let _conn = self.pool.get().await.map_err(|error| HealthError {
+            reason: error.to_string(),
+        })?;
+
+        tracing::trace!("Successfully checked health.");
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Push for PostgresPlugin {
+    #[tracing::instrument(name = "PostgresPlugin push_initialize", skip(self), fields(name = %self.name))]
     async fn initialize(&self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
         let connection_string = self.connection_string.clone();
@@ -164,20 +177,6 @@ impl Plugin for PostgresPlugin {
         Ok(())
     }
 
-    #[tracing::instrument(name = "PostgresPlugin health", skip(self), fields(self.name = %self.name))]
-    async fn health(&self) -> Result<(), HealthError> {
-        tracing::trace!("Checking health.");
-        let _conn = self.pool.get().await.map_err(|error| HealthError {
-            reason: error.to_string(),
-        })?;
-
-        tracing::trace!("Successfully checked health.");
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Push for PostgresPlugin {
     #[tracing::instrument(name = "PostgresPlugin push_alert", skip_all)]
     async fn push_alert(&self, alertmanager_push: &AlermanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
