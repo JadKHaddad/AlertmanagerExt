@@ -1,6 +1,7 @@
 use crate::database::models::alert_status::AlertStatusModel;
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
+use diesel::result::Error as DieselError;
 use diesel::{Connection, PgConnection};
 use diesel_async::{pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection};
 use diesel_async::{AsyncConnection, RunQueryDsl};
@@ -10,6 +11,7 @@ use models::AlermanagerPush;
 use plugins_definitions::{HealthError, InitializeError, Plugin};
 use push_definitions::{Push, PushError};
 use scoped_futures::ScopedFutureExt;
+use thiserror::Error as ThisError;
 use tokio::task::JoinHandle;
 
 mod database;
@@ -18,27 +20,87 @@ const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
 
-pub struct PushErrorWrapper(pub PushError);
-
-impl From<PushErrorWrapper> for PushError {
-    fn from(wrapper: PushErrorWrapper) -> Self {
-        wrapper.0
-    }
+#[derive(ThisError, Debug)]
+enum InternalPushError {
+    #[error("Transaction error: {0}")]
+    Transaction(
+        #[source]
+        #[from]
+        DieselError,
+    ),
+    #[error("Error while inserting alert group: group_key: {group_key}, error: {error}")]
+    GroupInsertion {
+        group_key: String,
+        #[source]
+        error: DieselError,
+    },
+    #[error("Error while inserting group label: group_key: {group_key}, label_name: {label_name}, label_value: {label_value}, error: {error}")]
+    GroupLabelInsertion {
+        group_key: String,
+        label_name: String,
+        label_value: String,
+        #[source]
+        error: DieselError,
+    },
+    #[error("Error while inserting common label: group_key: {group_key}, label_name: {label_name}, label_value: {label_value}, error: {error}")]
+    CommonLabelInsertion {
+        group_key: String,
+        label_name: String,
+        label_value: String,
+        #[source]
+        error: DieselError,
+    },
+    #[error("Error while inserting common annotation: group_key: {group_key}, annotation_name: {annotation_name}, annotation_value: {annotation_value}, error: {error}")]
+    CommonAnnotationInsertion {
+        group_key: String,
+        annotation_name: String,
+        annotation_value: String,
+        #[source]
+        error: DieselError,
+    },
+    #[error("Error while parsing starts_at: group_key: {group_key}, fingerprint: {fingerprint}, got_starts_at: {got_starts_at}, error: {error}")]
+    StartsAtParsing {
+        group_key: String,
+        fingerprint: String,
+        got_starts_at: String,
+        #[source]
+        error: chrono::ParseError,
+    },
+    #[error("Error while parsing ends_at: group_key: {group_key}, fingerprint: {fingerprint}, got_ends_at: {got_ends_at}, error: {error}")]
+    EndsAtParsing {
+        group_key: String,
+        fingerprint: String,
+        got_ends_at: String,
+        #[source]
+        error: chrono::ParseError,
+    },
+    #[error("Error while inserting alert: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}")]
+    AlertInsertion {
+        group_key: String,
+        fingerprint: String,
+        #[source]
+        error: DieselError,
+    },
+    #[error("Error while inserting alert label: group_key: {group_key}, fingerprint: {fingerprint}, label_name: {label_name}, label_value: {label_value}, error: {error}")]
+    AlertLabelInsertion {
+        group_key: String,
+        fingerprint: String,
+        label_name: String,
+        label_value: String,
+        #[source]
+        error: DieselError,
+    },
+    #[error("Error while inserting alert annotation: group_key: {group_key}, fingerprint: {fingerprint}, annotation_name: {annotation_name}, annotation_value: {annotation_value}, error: {error}")]
+    AlertAnnotationInsertion {
+        group_key: String,
+        fingerprint: String,
+        annotation_name: String,
+        annotation_value: String,
+        #[source]
+        error: DieselError,
+    },
 }
 
-impl From<PushError> for PushErrorWrapper {
-    fn from(error: PushError) -> Self {
-        PushErrorWrapper(error)
-    }
-}
-
-impl From<diesel::result::Error> for PushErrorWrapper {
-    fn from(error: diesel::result::Error) -> Self {
-        PushErrorWrapper(PushError {
-            reason: error.to_string(),
-        })
-    }
-}
 pub struct PostgresPlugin {
     name: String,
     connection_string: String,
@@ -123,7 +185,7 @@ impl Push for PostgresPlugin {
 
         // TODO: Test the transaction with some invalid dates!
         tracing::trace!("Starting transaction.");
-        conn.transaction::<(), PushErrorWrapper, _>(|mut conn| {
+        conn.transaction::<(), InternalPushError, _>(|mut conn| {
             async move {
                 let alert_group = database::models::group::InsertableAlertGroup {
                     receiver: &alertmanager_push.receiver,
@@ -138,8 +200,9 @@ impl Push for PostgresPlugin {
                     .returning(database::schema::alert_group::id)
                     .get_result::<i32>(&mut conn)
                     .await
-                    .map_err(|error| PushError {
-                        reason: format!("Failed to insert alert group: {}", error),
+                    .map_err(|error| InternalPushError::GroupInsertion {
+                        group_key: alertmanager_push.group_key.clone(),
+                        error,
                     })?;
 
                 tracing::trace!("Inserting group labels.");
@@ -154,8 +217,11 @@ impl Push for PostgresPlugin {
                         .values(&group_label)
                         .execute(&mut conn)
                         .await
-                        .map_err(|error| PushError {
-                            reason: format!("Failed to insert group label: {}", error),
+                        .map_err(|error| InternalPushError::GroupLabelInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            label_name: group_label.name.to_owned(),
+                            label_value: group_label.value.to_owned(),
+                            error,
                         })?;
                 }
 
@@ -171,8 +237,11 @@ impl Push for PostgresPlugin {
                         .values(&common_label)
                         .execute(&mut conn)
                         .await
-                        .map_err(|error| PushError {
-                            reason: format!("Failed to insert common label: {}", error),
+                        .map_err(|error| InternalPushError::CommonLabelInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            label_name: common_label.name.to_owned(),
+                            label_value: common_label.value.to_owned(),
+                            error,
                         })?;
                 }
 
@@ -188,27 +257,31 @@ impl Push for PostgresPlugin {
                         .values(&common_annotation)
                         .execute(&mut conn)
                         .await
-                        .map_err(|error| PushError {
-                            reason: format!("Failed to insert common annotation: {}", error),
+                        .map_err(|error| InternalPushError::CommonAnnotationInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            annotation_name: common_annotation.name.to_owned(),
+                            annotation_value: common_annotation.value.to_owned(),
+                            error,
                         })?;
                 }
 
                 tracing::trace!("Inserting alerts.");
                 for alert in alertmanager_push.alerts.iter() {
-                    let fingerprint_in_error_message =
-                        format!("fingerprint: {}", alert.fingerprint);
-
-                    // TODO: Error message (got: act. starts_at)
                     let starts_at = chrono::DateTime::parse_from_rfc3339(&alert.starts_at)
-                        .map_err(|error| PushError {
-                            reason: format!("Failed to parse starts_at, {fingerprint_in_error_message}, error: {error}")
+                        .map_err(|error| InternalPushError::StartsAtParsing {
+                            group_key: alertmanager_push.group_key.clone(),
+                            fingerprint: alert.fingerprint.clone(),
+                            got_starts_at: alert.starts_at.clone(),
+                            error,
                         })?
                         .naive_utc();
-                    
-                    // TODO: Error message (got: act. ends_at)
+
                     let ends_at = chrono::DateTime::parse_from_rfc3339(&alert.ends_at)
-                        .map_err(|error| PushError {
-                            reason: format!("Failed to parse ends_at: {fingerprint_in_error_message}, error: {error}")
+                        .map_err(|error| InternalPushError::EndsAtParsing {
+                            group_key: alertmanager_push.group_key.clone(),
+                            fingerprint: alert.fingerprint.clone(),
+                            got_ends_at: alert.ends_at.clone(),
+                            error,
                         })?
                         .naive_utc();
 
@@ -232,11 +305,12 @@ impl Push for PostgresPlugin {
                         .returning(database::schema::alert::id)
                         .get_result::<i32>(&mut conn)
                         .await
-                        .map_err(|error| PushError {
-                            reason: format!("Failed to insert alert, {fingerprint_in_error_message}, error: {error}")
+                        .map_err(|error| InternalPushError::AlertInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            fingerprint: alert.fingerprint.clone(),
+                            error,
                         })?;
-                    
-                    // TODO: Annotations and labels in error messages
+
                     for label in alert.labels.iter() {
                         let label = database::models::alert::InsertableAlertLabel {
                             alert_id,
@@ -248,8 +322,12 @@ impl Push for PostgresPlugin {
                             .values(&label)
                             .execute(&mut conn)
                             .await
-                            .map_err(|error| PushError {
-                                reason: format!("Failed to insert alert label, {fingerprint_in_error_message}, error: {error}")
+                            .map_err(|error| InternalPushError::AlertLabelInsertion {
+                                group_key: alertmanager_push.group_key.clone(),
+                                fingerprint: alert.fingerprint.clone(),
+                                label_name: label.name.to_owned(),
+                                label_value: label.value.to_owned(),
+                                error,
                             })?;
                     }
 
@@ -264,8 +342,12 @@ impl Push for PostgresPlugin {
                             .values(&annotation)
                             .execute(&mut conn)
                             .await
-                            .map_err(|error| PushError {
-                                reason: format!("Failed to insert alert annotation, {fingerprint_in_error_message}, error: {error}")
+                            .map_err(|error| InternalPushError::AlertAnnotationInsertion {
+                                group_key: alertmanager_push.group_key.clone(),
+                                fingerprint: alert.fingerprint.clone(),
+                                annotation_name: annotation.name.to_owned(),
+                                annotation_value: annotation.value.to_owned(),
+                                error,
                             })?;
                     }
                 }
@@ -274,7 +356,10 @@ impl Push for PostgresPlugin {
             }
             .scope_boxed()
         })
-        .await?;
+        .await
+        .map_err(|error| PushError {
+            reason: error.to_string(),
+        })?;
 
         tracing::trace!("Successfully pushed.");
         Ok(())

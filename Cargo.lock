@@ -1256,6 +1256,7 @@ dependencies = [
  "plugins_definitions",
  "push_definitions",
  "scoped-futures",
+ "thiserror",
  "tokio",
  "tracing",
 ]
