@@ -1,5 +1,4 @@
 use crate::error_response::{ErrorResponse, ErrorResponseType, PathInvalid, PayloadInvalid};
-use aide::operation::OperationIo;
 use async_trait::async_trait;
 use axum::response::IntoResponse;
 use axum::{body::HttpBody, extract::FromRequest, http::Request, BoxError, Json as AxumJson};
@@ -12,7 +11,6 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fmt::Debug;
 
-#[derive(OperationIo)]
 pub struct ApiPath<T>(pub T);
 
 #[async_trait]
@@ -49,8 +47,6 @@ where
     }
 }
 
-#[derive(Serialize, OperationIo)]
-#[aide(input_with = "AxumJson<T>", output_with = "AxumJson<T>", json_schema)]
 pub struct ApiJson<T>(pub T);
 
 #[async_trait]

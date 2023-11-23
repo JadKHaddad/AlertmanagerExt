@@ -3,12 +3,12 @@ use std::{ops::Deref, sync::Arc};
 use crate::traits::PushAndPlugin;
 
 #[derive(Clone)]
-pub struct ApiV1State {
+pub struct ApiState {
     inner: Arc<ApiV1StateInner>,
 }
 
-impl ApiV1State {
-    pub fn new(plugins: Vec<Box<dyn PushAndPlugin>>) -> Self {
+impl ApiState {
+    pub fn new(plugins: Vec<Arc<dyn PushAndPlugin>>) -> Self {
         Self {
             inner: Arc::new(ApiV1StateInner { plugins }),
         }
@@ -16,10 +16,10 @@ impl ApiV1State {
 }
 
 pub struct ApiV1StateInner {
-    pub plugins: Vec<Box<dyn PushAndPlugin>>,
+    pub plugins: Vec<Arc<dyn PushAndPlugin>>,
 }
 
-impl Deref for ApiV1State {
+impl Deref for ApiState {
     type Target = ApiV1StateInner;
 
     fn deref(&self) -> &Self::Target {

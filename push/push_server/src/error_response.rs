@@ -1,5 +1,4 @@
-use crate::traits::{HasResponseDocs, HasStatusCode};
-use aide::transform::TransformResponse;
+use crate::traits::HasStatusCode;
 use axum::{http::StatusCode, response::IntoResponse, Json};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -92,22 +91,5 @@ impl From<ErrorResponseType> for ErrorResponse {
 impl IntoResponse for ErrorResponse {
     fn into_response(self) -> axum::response::Response {
         (self.error_type.status_code(), Json(self)).into_response()
-    }
-}
-
-impl HasResponseDocs for ErrorResponse {
-    fn response_docs<R>(res: TransformResponse<R>) -> TransformResponse<R>
-    where
-        R: Serialize,
-        ErrorResponse: Into<R>,
-    {
-        res.description("Error response").example(ErrorResponse {
-            error_type: ErrorResponseType::PayloadInvalid(PayloadInvalid {
-                status_code: StatusCode::BAD_REQUEST,
-                reason: "Invalid payload".to_string(),
-                expected_schema: r#"{"type":"object","properties":{"apiOk":{"type":"boolean"}}}"#
-                    .to_string(),
-            }),
-        })
     }
 }

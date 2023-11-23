@@ -1,27 +1,15 @@
-use aide::{
-    axum::{
-        routing::{get, get_with, post_with},
-        ApiRouter, IntoApiResponse,
-    },
-    openapi::{Info, OpenApi},
-    redoc::Redoc,
-    transform::TransformOpenApi,
-};
 use anyhow::{Context, Result as AnyResult};
-use axum::Extension;
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use postgres_plugin::PostgresPlugin;
 use push_server::{
     error_response::{ErrorResponse, ErrorResponseType},
-    extractors::ApiJson,
-    state::ApiV1State,
-    traits::{HasOperationDocs, HasResponseDocs, PushAndPlugin},
+    state::ApiState,
+    traits::PushAndPlugin,
 };
-
-use std::net::SocketAddr;
-
-async fn serve_api(Extension(api): Extension<OpenApi>) -> impl IntoApiResponse {
-    ApiJson(api)
-}
+use std::{net::SocketAddr, sync::Arc};
 
 async fn not_found() -> ErrorResponse {
     ErrorResponse {
@@ -55,7 +43,7 @@ async fn main() -> AnyResult<()> {
     .await
     .context("Failed to create Postgres plugin.")?;
 
-    let plugins: Vec<Box<dyn PushAndPlugin>> = vec![Box::new(postgres_plugin)];
+    let plugins: Vec<Arc<dyn PushAndPlugin>> = vec![Arc::new(postgres_plugin)];
     tracing::info!("Initializing plugins.");
     for plugin in &plugins {
         plugin
@@ -64,66 +52,25 @@ async fn main() -> AnyResult<()> {
             .context(format!("Failed to initialize plugin: {}", plugin.name()))?;
     }
 
-    let api_v1_state = ApiV1State::new(plugins);
+    let state = ApiState::new(plugins);
 
-    let app = ApiRouter::new()
+    let app = Router::new()
         .fallback(not_found)
-        .api_route(
-            "/health",
-            get_with(
-                push_server::routes::health::health,
-                push_server::routes::health::HealthResponse::operation_docs,
-            ),
+        .route("/health", get(push_server::routes::health::health))
+        .route("/push", post(push_server::routes::push::push))
+        .route(
+            "/push_named/:plugin_name",
+            post(push_server::routes::push::push_named),
         )
-        .route("/redoc", Redoc::new("/api.json").axum_route())
-        .route("/api.json", get(serve_api))
-        .nest_api_service(
-            "/api",
-            ApiRouter::new().nest(
-                "/v1",
-                ApiRouter::new()
-                    .api_route(
-                        "/push",
-                        post_with(
-                            push_server::routes::push::push,
-                            push_server::routes::push::PushResponse::operation_docs,
-                        ),
-                    )
-                    .api_route(
-                        "/push_named/:plugin_name",
-                        post_with(
-                            push_server::routes::push::push_named,
-                            push_server::routes::push::PluginPushResponse::operation_docs,
-                        ),
-                    )
-                    .with_state(api_v1_state),
-            ),
-        );
-
-    let mut open_api = OpenApi {
-        info: Info {
-            title: "AlertmanagerExt".to_string(),
-            ..Info::default()
-        },
-        ..OpenApi::default()
-    };
+        .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+
+    tracing::info!(%addr, "Starting server.");
     axum::Server::bind(&addr)
-        .serve(
-            app.finish_api_with(&mut open_api, api_docs)
-                .layer(Extension(open_api))
-                .into_make_service(),
-        )
+        .serve(app.into_make_service())
         .await
         .context("Server failed")?;
 
     Ok(())
-}
-
-fn api_docs(api: TransformOpenApi) -> TransformOpenApi {
-    api.title("AlertmanagerExt API")
-        .summary("AlertmanagerExt")
-        .version(env!("CARGO_PKG_VERSION"))
-        .default_response_with::<ApiJson<ErrorResponse>, _>(ErrorResponse::response_docs)
 }
