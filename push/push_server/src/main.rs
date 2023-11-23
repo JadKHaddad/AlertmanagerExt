@@ -57,6 +57,11 @@ async fn main() -> AnyResult<()> {
     let app = Router::new()
         .fallback(not_found)
         .route("/health", get(push_server::routes::health::health))
+        .route("/health_all", get(push_server::routes::health::health_all))
+        .route(
+            "/health_named/:plugin_name",
+            get(push_server::routes::health::health_named),
+        )
         .route("/push", post(push_server::routes::push::push))
         .route(
             "/push_named/:plugin_name",

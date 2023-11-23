@@ -1,16 +1,14 @@
-use std::sync::Arc;
-
-use axum::{extract::State, http::StatusCode, response::IntoResponse};
-use models::AlermanagerPush;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use tokio::task::JoinHandle;
-
 use crate::{
     extractors::{ApiJson, ApiPath},
     state::ApiState,
     traits::{HasStatusCode, PushAndPlugin},
 };
+use axum::{extract::State, http::StatusCode, response::IntoResponse};
+use models::AlermanagerPush;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::task::JoinHandle;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -36,7 +34,7 @@ impl HasStatusCode for PushStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
-#[serde(tag = "type", content = "error")]
+#[serde(tag = "type", content = "content")]
 /// Push status for a plugin
 pub enum PluginPushStatus {
     /// Push was successful
@@ -46,7 +44,7 @@ pub enum PluginPushStatus {
     /// Push failed
     Failed {
         /// Error message
-        error_message: String,
+        reason: String,
     },
 }
 
@@ -103,10 +101,10 @@ async fn match_plugin_push(
             plugin_name: plugin.name().to_string(),
         },
         Err(error) => {
-            tracing::error!(%error, name=plugin.name() , "Failed to push alerts to plugin.");
+            tracing::error!(name=plugin.name(), %error, "Failed to push alerts to plugin.");
             PluginPushResponse {
                 status: PluginPushStatus::Failed {
-                    error_message: error.to_string(),
+                    reason: error.to_string(),
                 },
                 plugin_name: plugin.name().to_string(),
             }
@@ -128,10 +126,11 @@ pub async fn push(
     State(state): State<ApiState>,
     ApiJson(alertmanager_push): ApiJson<AlermanagerPush>,
 ) -> PushResponse {
+    tracing::trace!("Pushing alerts to plugins.");
+
     let mut plugin_push_responses = vec![];
     let mut plugin_response_handles = vec![];
 
-    tracing::trace!("Pushing alerts to plugins.");
     for plugin in &state.plugins {
         let plugin_c = plugin.clone();
         let alertmanager_push_c = alertmanager_push.clone();
@@ -151,7 +150,7 @@ pub async fn push(
                     tracing::error!(name=plugin_response_handle.plugin_name, %error, "Plugin push handler was cancelled.");
                     PluginPushResponse {
                         status: PluginPushStatus::Failed {
-                            error_message: error.to_string(),
+                            reason: error.to_string(),
                         },
                         plugin_name: plugin_response_handle.plugin_name,
                     }
@@ -159,7 +158,7 @@ pub async fn push(
                     tracing::error!(name=plugin_response_handle.plugin_name, %error, "Plugin push handler panicked.");
                     PluginPushResponse {
                         status: PluginPushStatus::Failed {
-                            error_message: error.to_string(),
+                            reason: error.to_string(),
                         },
                         plugin_name: plugin_response_handle.plugin_name,
                     }
