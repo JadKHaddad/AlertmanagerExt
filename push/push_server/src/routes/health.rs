@@ -129,23 +129,20 @@ pub async fn health_all(State(state): State<ApiState>) -> PluginsHealthResponse 
     tracing::trace!("Health check for all plugins");
 
     let mut plugin_health_responses = vec![];
+    let mut healthy_plugins_count: usize = 0;
 
     for plugin in state.plugins.iter() {
         let res = match_plugin_health(plugin).await;
+        if let PluginHealthStatus::Healthy = res.status {
+            healthy_plugins_count += 1;
+        }
         plugin_health_responses.push(res);
     }
-    let status = if plugin_health_responses
-        .iter()
-        .all(|res| res.status == PluginHealthStatus::Healthy)
-    {
-        HealthStatus::Healthy
-    } else if plugin_health_responses
-        .iter()
-        .any(|res| res.status == PluginHealthStatus::Healthy)
-    {
-        HealthStatus::Partial
-    } else {
-        HealthStatus::Unhealthy
+
+    let status = match healthy_plugins_count {
+        0 => HealthStatus::Unhealthy,
+        n if n == state.plugins.len() => HealthStatus::Healthy,
+        _ => HealthStatus::Partial,
     };
 
     PluginsHealthResponse {

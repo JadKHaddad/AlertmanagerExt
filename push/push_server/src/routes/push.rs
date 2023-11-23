@@ -130,6 +130,7 @@ pub async fn push(
 
     let mut plugin_push_responses = vec![];
     let mut plugin_response_handles = vec![];
+    let mut ok_push_count: usize = 0;
 
     for plugin in &state.plugins {
         let plugin_c = plugin.clone();
@@ -165,21 +166,16 @@ pub async fn push(
                 }
             }
         };
+        if let PluginPushStatus::Ok = plugin_push_response.status {
+            ok_push_count += 1;
+        }
         plugin_push_responses.push(plugin_push_response);
     }
 
-    let status = if plugin_push_responses
-        .iter()
-        .all(|res| res.status == PluginPushStatus::Ok)
-    {
-        PushStatus::Ok
-    } else if plugin_push_responses
-        .iter()
-        .any(|res| res.status == PluginPushStatus::Ok)
-    {
-        PushStatus::Partial
-    } else {
-        PushStatus::Failed
+    let status = match ok_push_count {
+        0 => PushStatus::Failed,
+        n if n == state.plugins.len() => PushStatus::Ok,
+        _ => PushStatus::Partial,
     };
 
     PushResponse {
