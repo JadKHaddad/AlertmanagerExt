@@ -3,7 +3,8 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use postgres_plugin::PostgresPlugin;
+use postgres_plugin::{PostgresPlugin, PostgresPluginConfig};
+use push_definitions::Push;
 use push_server::{
     error_response::{ErrorResponse, ErrorResponseType},
     state::ApiState,
@@ -36,21 +37,25 @@ async fn main() -> AnyResult<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    let postgres_plugin = PostgresPlugin::new(
-        String::from("postgres_plugin_1"),
-        String::from("postgres://user:password@localhost:5432/database"),
-    )
-    .await
-    .context("Failed to create Postgres plugin.")?;
+    let postgres_plugin_config = PostgresPluginConfig {
+        connection_string: String::from("postgres://user:password@localhost:5432/database"),
+        max_connections: 15,
+        connection_timeout: std::time::Duration::from_secs(5),
+    };
 
-    let plugins: Vec<Arc<dyn PushAndPlugin>> = vec![Arc::new(postgres_plugin)];
-    tracing::info!("Initializing plugins.");
-    for plugin in &plugins {
-        plugin
-            .initialize()
+    let mut postgres_plugin =
+        PostgresPlugin::new(String::from("postgres_plugin_1"), postgres_plugin_config)
             .await
-            .context(format!("Failed to initialize plugin: {}", plugin.name()))?;
-    }
+            .context("Failed to create Postgres plugin.")?;
+
+    postgres_plugin
+        .initialize()
+        .await
+        .context("Failed to initialize Postgres plugin.")?;
+
+    // Plugins are initialized before they are added to the state.
+    // Well because of Arc.
+    let plugins: Vec<Arc<dyn PushAndPlugin>> = vec![Arc::new(postgres_plugin)];
 
     let state = ApiState::new(plugins);
 

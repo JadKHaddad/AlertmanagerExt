@@ -101,25 +101,35 @@ enum InternalPushError {
     },
 }
 
+/// Configuration for the Postgres plugin
+pub struct PostgresPluginConfig {
+    /// Connection string for the Postgres database
+    pub connection_string: String,
+    /// Max number of connections in the pool
+    pub max_connections: u32,
+    /// Connection timeout
+    pub connection_timeout: std::time::Duration,
+}
+
 pub struct PostgresPlugin {
     name: String,
-    connection_string: String,
+    config: Option<Box<PostgresPluginConfig>>,
     pool: Pool,
 }
 
 impl PostgresPlugin {
-    pub async fn new(name: String, connection_string: String) -> AnyResult<Self> {
-        let manager = AsyncDieselConnectionManager::new(connection_string.clone());
+    pub async fn new(name: String, config: PostgresPluginConfig) -> AnyResult<Self> {
+        let manager = AsyncDieselConnectionManager::new(config.connection_string.clone());
         let pool = bb8::Pool::builder()
-            .max_size(15)
-            .connection_timeout(std::time::Duration::from_secs(3))
+            .max_size(config.max_connections)
+            .connection_timeout(config.connection_timeout)
             .build(manager)
             .await
             .context("Failed to create pool.")?;
 
         Ok(Self {
             name,
-            connection_string,
+            config: Some(Box::new(config)),
             pool,
         })
     }
@@ -135,7 +145,7 @@ impl Plugin for PostgresPlugin {
         &self.name
     }
 
-    #[tracing::instrument(name = "PostgresPlugin health", skip(self), fields(self.name = %self.name))]
+    #[tracing::instrument(name = "health", skip(self), fields(self.name = %self.name, self.type_ = %self.type_()))]
     async fn health(&self) -> Result<(), HealthError> {
         tracing::trace!("Checking health.");
         let _conn = self.pool.get().await.map_err(|error| HealthError {
@@ -149,10 +159,15 @@ impl Plugin for PostgresPlugin {
 
 #[async_trait]
 impl Push for PostgresPlugin {
-    #[tracing::instrument(name = "PostgresPlugin push_initialize", skip(self), fields(name = %self.name))]
-    async fn initialize(&self) -> Result<(), InitializeError> {
+    #[tracing::instrument(name = "push_initialize", skip(self), fields(self.name = %self.name, self.type_ = %self.type_()))]
+    async fn initialize(&mut self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
-        let connection_string = self.connection_string.clone();
+
+        let config = self.config.take().ok_or_else(|| InitializeError {
+            reason: "Already initialized.".to_string(),
+        })?;
+
+        let connection_string = config.connection_string.clone();
         let handle: JoinHandle<AnyResult<()>> = tokio::task::spawn_blocking(move || {
             let mut conn = PgConnection::establish(&connection_string)
                 .context("Failed to establish connection.")?;
@@ -177,7 +192,7 @@ impl Push for PostgresPlugin {
         Ok(())
     }
 
-    #[tracing::instrument(name = "PostgresPlugin push_alert", skip_all)]
+    #[tracing::instrument(name = "push_alert", skip(self), fields(self.name = %self.name, self.type_ = %self.type_()))]
     async fn push_alert(&self, alertmanager_push: &AlermanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
         let mut conn = self.pool.get().await.map_err(|error| PushError {

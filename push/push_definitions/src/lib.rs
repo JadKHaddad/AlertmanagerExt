@@ -17,7 +17,7 @@ pub struct PushError {
 #[async_trait]
 pub trait Push: Send + Sync + 'static {
     /// Initialize on startup
-    async fn initialize(&self) -> Result<(), InitializeError>;
+    async fn initialize(&mut self) -> Result<(), InitializeError>;
 
     async fn push_alert(&self, alertmanager_push: &AlermanagerPush) -> Result<(), PushError>;
 }
