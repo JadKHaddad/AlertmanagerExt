@@ -138,7 +138,7 @@ impl PostgresPlugin {
 #[async_trait]
 impl Plugin for PostgresPlugin {
     fn type_(&self) -> &str {
-        "PostgresPlugin"
+        "Postgres"
     }
 
     fn name(&self) -> &str {
@@ -163,11 +163,12 @@ impl Push for PostgresPlugin {
     async fn initialize(&mut self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
 
+        // Always be nice and give memory back to the OS. ;)
         let config = self.config.take().ok_or_else(|| InitializeError {
             reason: "Already initialized.".to_string(),
         })?;
 
-        let connection_string = config.connection_string.clone();
+        let connection_string = config.connection_string;
         let handle: JoinHandle<AnyResult<()>> = tokio::task::spawn_blocking(move || {
             let mut conn = PgConnection::establish(&connection_string)
                 .context("Failed to establish connection.")?;
