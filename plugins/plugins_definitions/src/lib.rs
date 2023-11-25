@@ -19,6 +19,11 @@ pub trait Plugin: Send + Sync + 'static {
     /// Used to identify the plugin among others of the same type
     fn name(&self) -> &str;
 
+    /// Group of the plugin
+    ///
+    /// Multiple plugins can be grouped together
+    fn group(&self) -> &str;
+
     /// Health check
     async fn health(&self) -> Result<(), HealthError>;
 }

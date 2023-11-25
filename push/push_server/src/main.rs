@@ -3,7 +3,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use postgres_plugin::{PostgresPlugin, PostgresPluginConfig};
+use postgres_plugin::{PostgresPlugin, PostgresPluginConfig, PostgresPluginMeta};
 use push_definitions::Push;
 use push_server::{
     error_response::{ErrorResponse, ErrorResponseType},
@@ -43,10 +43,14 @@ async fn main() -> AnyResult<()> {
         connection_timeout: std::time::Duration::from_secs(5),
     };
 
-    let mut postgres_plugin =
-        PostgresPlugin::new(String::from("postgres_plugin_1"), postgres_plugin_config)
-            .await
-            .context("Failed to create Postgres plugin.")?;
+    let postgres_plugin_meta = PostgresPluginMeta {
+        name: String::from("postgres_plugin_1"),
+        group: String::from("default"),
+    };
+
+    let mut postgres_plugin = PostgresPlugin::new(postgres_plugin_meta, postgres_plugin_config)
+        .await
+        .context("Failed to create Postgres plugin.")?;
 
     postgres_plugin
         .initialize()
