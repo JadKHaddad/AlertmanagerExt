@@ -20,7 +20,10 @@ pub enum PushStatus {
     Partial,
     /// Push failed
     Failed,
-    /// No plugins was found
+    /// No plugins were found
+    ///
+    /// If pushed to a group, this means that the group is empty
+    /// If pushed to all plugins, this means that there are no plugins
     NoPlugins,
 }
 
