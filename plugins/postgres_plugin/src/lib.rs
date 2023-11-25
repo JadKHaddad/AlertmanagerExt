@@ -204,7 +204,7 @@ impl Push for PostgresPlugin {
         Ok(())
     }
 
-    #[tracing::instrument(name = "push_alert", skip(self), fields(self.name = %self.name(), self.group = %self.group(), self.type_ = %self.type_()))]
+    #[tracing::instrument(name = "push_alert", skip_all, fields(self.name = %self.name(), self.group = %self.group(), self.type_ = %self.type_()))]
     async fn push_alert(&self, alertmanager_push: &AlermanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
         let mut conn = self.pool.get().await.map_err(|error| PushError {
