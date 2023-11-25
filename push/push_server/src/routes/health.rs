@@ -1,13 +1,13 @@
-use std::sync::Arc;
-
 use crate::traits::{HasStatusCode, PushAndPlugin};
 use crate::{extractors::ApiPath, state::ApiState};
 use axum::extract::State;
 use axum::{http::StatusCode, response::IntoResponse, Json};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use utoipa::ToSchema;
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerHealthResponse {}
 
@@ -24,11 +24,14 @@ impl IntoResponse for ServerHealthResponse {
 }
 
 /// Health check for the server
+#[utoipa::path(get, path = "/health", responses(
+    (status = 200, description = "Server is healthy.", body = [ServerHealthResponse])
+))]
 pub async fn health() -> ServerHealthResponse {
     ServerHealthResponse {}
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 /// Health status for all plugins
 pub enum HealthStatus {
@@ -40,7 +43,7 @@ pub enum HealthStatus {
     Unhealthy,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "type", content = "content")]
 /// Plugin health status
@@ -56,7 +59,7 @@ pub enum PluginHealthStatus {
     },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PlugingHealthResponse {
     pub status: PluginHealthStatus,
@@ -68,7 +71,7 @@ impl HasStatusCode for PlugingHealthResponse {
         match self.status {
             PluginHealthStatus::Healthy => StatusCode::OK,
             PluginHealthStatus::NotFound => StatusCode::NOT_FOUND,
-            PluginHealthStatus::Unhealthy { .. } => StatusCode::INTERNAL_SERVER_ERROR,
+            PluginHealthStatus::Unhealthy { .. } => StatusCode::SERVICE_UNAVAILABLE,
         }
     }
 }
@@ -79,7 +82,7 @@ impl IntoResponse for PlugingHealthResponse {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginsHealthResponse {
     /// Health status for all plugins
@@ -93,7 +96,7 @@ impl HasStatusCode for PluginsHealthResponse {
         match self.status {
             HealthStatus::Healthy => StatusCode::OK,
             HealthStatus::Partial => StatusCode::MULTI_STATUS,
-            HealthStatus::Unhealthy => StatusCode::INTERNAL_SERVER_ERROR,
+            HealthStatus::Unhealthy => StatusCode::SERVICE_UNAVAILABLE,
         }
     }
 }
@@ -124,6 +127,11 @@ async fn match_plugin_health(plugin: &Arc<dyn PushAndPlugin>) -> PlugingHealthRe
 }
 
 /// Health check for all plugins
+#[utoipa::path(get, path = "/health_all", responses(
+    (status = 200, description = "All plugins are healthy.", body = [PluginsHealthResponse]),
+    (status = 207, description = "Some plugins are unhealthy.", body = [PluginsHealthResponse]),
+    (status = 503, description = "All plugins are unhealthy.", body = [PluginsHealthResponse])
+))]
 #[tracing::instrument(name = "health_all", skip_all)]
 pub async fn health_all(State(state): State<ApiState>) -> PluginsHealthResponse {
     tracing::trace!("Health check for all plugins");
@@ -152,6 +160,17 @@ pub async fn health_all(State(state): State<ApiState>) -> PluginsHealthResponse 
 }
 
 /// Health check for a specific plugin
+#[utoipa::path(get, path = "/health_named/{plugin_name}", 
+    params(
+        ("plugin_name" = String, Path, description = "Name of the plugin to check.")
+    ),
+    responses(
+        (status = 200, description = "Plugin is healthy.", body = [PlugingHealthResponse]),
+        (status = 404, description = "Plugin was not found.", body = [PlugingHealthResponse]),
+        (status = 503, description = "Plugin is unhealthy.", body = [PlugingHealthResponse]),
+        (status = 400, description = "Invalid path.", body = [ErrorResponse]),
+        (status = 500, description = "Iternal server error.", body = [ErrorResponse])
+))]
 #[tracing::instrument(name = "health_named", skip_all)]
 pub async fn health_named(
     State(state): State<ApiState>,

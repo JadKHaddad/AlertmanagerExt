@@ -11,12 +11,39 @@ use push_server::{
     traits::PushAndPlugin,
 };
 use std::{net::SocketAddr, sync::Arc};
+use utoipa::OpenApi;
+use utoipa_rapidoc::RapiDoc;
+use utoipa_redoc::{Redoc, Servable};
+use utoipa_swagger_ui::SwaggerUi;
 
 async fn not_found() -> ErrorResponse {
     ErrorResponse {
         error_type: ErrorResponseType::NotFound,
     }
 }
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        push_server::routes::health::health,
+        push_server::routes::health::health_all,
+        push_server::routes::health::health_named,
+    ),
+    components(schemas(
+        push_server::error_response::ErrorResponse,
+        push_server::error_response::ErrorResponseType,
+        push_server::error_response::PayloadInvalid,
+        push_server::error_response::PathInvalid,
+        push_server::error_response::InternalServerError,
+        push_server::routes::health::ServerHealthResponse,
+        push_server::routes::health::HealthStatus,
+        push_server::routes::health::PluginHealthStatus,
+        push_server::routes::health::PluginsHealthResponse,
+        push_server::routes::health::PlugingHealthResponse
+    )),
+    tags()
+)]
+struct ApiDoc;
 
 #[tokio::main]
 async fn main() -> AnyResult<()> {
@@ -65,6 +92,9 @@ async fn main() -> AnyResult<()> {
 
     let app = Router::new()
         .fallback(not_found)
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
+        .merge(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
         .route("/health", get(push_server::routes::health::health))
         .route("/health_all", get(push_server::routes::health::health_all))
         .route(

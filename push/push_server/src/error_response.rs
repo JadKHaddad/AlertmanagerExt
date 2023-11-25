@@ -2,8 +2,9 @@ use crate::traits::HasStatusCode;
 use axum::{http::StatusCode, response::IntoResponse, Json};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 /// Default error response
 pub struct ErrorResponse {
@@ -11,7 +12,7 @@ pub struct ErrorResponse {
     pub error_type: ErrorResponseType,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(tag = "type", content = "error")]
 #[serde(rename_all = "camelCase")]
 pub enum ErrorResponseType {
@@ -25,7 +26,7 @@ pub enum ErrorResponseType {
     NotFound,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PayloadInvalid {
     #[serde(skip)]
@@ -34,7 +35,7 @@ pub struct PayloadInvalid {
     pub(crate) expected_schema: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PathInvalid {
     #[serde(skip)]
@@ -42,7 +43,7 @@ pub struct PathInvalid {
     pub(crate) reason: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InternalServerError {
     reason: String,
