@@ -1,7 +1,7 @@
 use crate::{
     extractors::{ApiJson, ApiPath},
     state::ApiState,
-    traits::{HasStatusCode, PushAndPlugin},
+    traits::{HasPushAndPluginArcRef, HasStatusCode, PushAndPlugin},
 };
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use models::AlermanagerPush;
@@ -131,8 +131,8 @@ struct PluginPushResponseJoinHandle {
 /// Helper function
 ///
 /// Pushes alerts asynchronously
-async fn push_async(
-    affected_plugins: &Vec<&Arc<dyn PushAndPlugin>>,
+async fn push_async<A: HasPushAndPluginArcRef>(
+    affected_plugins: &Vec<A>,
     alertmanager_push: &AlermanagerPush,
 ) -> PushResponse {
     if affected_plugins.is_empty() {
@@ -147,13 +147,13 @@ async fn push_async(
     let mut ok_push_count: usize = 0;
 
     for plugin in affected_plugins {
-        let plugin_c = Arc::clone(plugin);
+        let plugin_c = Arc::clone(plugin.arc_ref());
         let alertmanager_push_c = alertmanager_push.clone();
         let handle =
             tokio::spawn(async move { match_plugin_push(&plugin_c, &alertmanager_push_c).await });
         plugin_response_handles.push(PluginPushResponseJoinHandle {
             join_handle: handle,
-            plugin_name: plugin.name().to_string(),
+            plugin_name: plugin.arc_ref().name().to_string(),
         });
     }
 
@@ -206,8 +206,9 @@ pub async fn push(
 ) -> PushResponse {
     tracing::trace!("Pushing alerts to plugins.");
 
-    let affected_plugins: Vec<&Arc<dyn PushAndPlugin>> = state.plugins.iter().collect();
-    push_async(&affected_plugins, &alertmanager_push).await
+    let affected_plugins = &state.plugins;
+
+    push_async(affected_plugins, &alertmanager_push).await
 }
 
 /// Push alerts to plugins in a group asynchronously
@@ -224,6 +225,7 @@ pub async fn push_grouped(
         .iter()
         .filter(|p| p.group() == plugin_group)
         .collect();
+
     push_async(&affected_plugins, &alertmanager_push).await
 }
 
