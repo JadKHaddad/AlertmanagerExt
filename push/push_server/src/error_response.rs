@@ -24,6 +24,8 @@ pub enum ErrorResponseType {
     InternalServerError(InternalServerError),
     /// Not found
     NotFound,
+    /// Method not allowed
+    MethodNotAllowed,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
@@ -68,6 +70,7 @@ impl HasStatusCode for ErrorResponseType {
             ErrorResponseType::PathInvalid(path_invalid) => path_invalid.status_code,
             ErrorResponseType::InternalServerError { .. } => StatusCode::INTERNAL_SERVER_ERROR,
             ErrorResponseType::NotFound => StatusCode::NOT_FOUND,
+            ErrorResponseType::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
         }
     }
 }

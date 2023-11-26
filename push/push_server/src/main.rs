@@ -1,5 +1,6 @@
 use anyhow::{Context, Result as AnyResult};
 use axum::{
+    middleware,
     routing::{get, post},
     Router,
 };
@@ -106,6 +107,9 @@ async fn main() -> AnyResult<()> {
             "/push_named/:plugin_name",
             post(push_server::routes::push::push_named),
         )
+        .layer(middleware::from_fn(
+            push_server::middlewares::method_not_allowed,
+        ))
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));

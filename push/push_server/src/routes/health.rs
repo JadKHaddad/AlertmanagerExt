@@ -25,7 +25,9 @@ impl IntoResponse for ServerHealthResponse {
 
 /// Health check for the server
 #[utoipa::path(get, path = "/health", responses(
-    (status = 200, description = "Server is healthy.", body = [ServerHealthResponse])
+    (status = 200, description = "Server is healthy.", body = [ServerHealthResponse]),
+    // Middleware error responses
+    (status = 405, description = "Method not allowed.", body = [ErrorResponse])
 ))]
 pub async fn health() -> ServerHealthResponse {
     ServerHealthResponse {}
@@ -130,7 +132,9 @@ async fn match_plugin_health(plugin: &Arc<dyn PushAndPlugin>) -> PlugingHealthRe
 #[utoipa::path(get, path = "/health_all", responses(
     (status = 200, description = "All plugins are healthy.", body = [PluginsHealthResponse]),
     (status = 207, description = "Some plugins are unhealthy.", body = [PluginsHealthResponse]),
-    (status = 503, description = "All plugins are unhealthy.", body = [PluginsHealthResponse])
+    (status = 503, description = "All plugins are unhealthy.", body = [PluginsHealthResponse]),
+    // Middleware error responses
+    (status = 405, description = "Method not allowed.", body = [ErrorResponse])
 ))]
 #[tracing::instrument(name = "health_all", skip_all)]
 pub async fn health_all(State(state): State<ApiState>) -> PluginsHealthResponse {
@@ -171,7 +175,9 @@ pub async fn health_all(State(state): State<ApiState>) -> PluginsHealthResponse 
         // ApiPath extractor error responses
         (status = 400, description = "Invalid path.", body = [ErrorResponse]),
         (status = 500, description = "Missing params.", body = [ErrorResponse]),
-        (status = 500, description = "Iternal server error.", body = [ErrorResponse])
+        (status = 500, description = "Iternal server error.", body = [ErrorResponse]),
+        // Middleware error responses
+        (status = 405, description = "Method not allowed.", body = [ErrorResponse])
 ))]
 #[tracing::instrument(name = "health_named", skip_all)]
 pub async fn health_named(
