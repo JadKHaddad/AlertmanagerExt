@@ -29,13 +29,23 @@ async fn not_found() -> ErrorResponse {
         push_server::routes::health::health,
         push_server::routes::health::health_all,
         push_server::routes::health::health_named,
+        push_server::routes::push::push,
+        push_server::routes::push::push_grouped,
+        push_server::routes::push::push_named
     ),
     components(schemas(
+        models::AlermanagerPush,
+        models::Status,
+        models::Alert,
         push_server::error_response::ErrorResponse,
         push_server::error_response::ErrorResponseType,
         push_server::error_response::PayloadInvalid,
         push_server::error_response::PathInvalid,
         push_server::error_response::InternalServerError,
+        push_server::routes::push::PushStatus,
+        push_server::routes::push::PluginPushStatus,
+        push_server::routes::push::PluginPushResponse,
+        push_server::routes::push::PushResponse,
         push_server::routes::health::ServerHealthResponse,
         push_server::routes::health::HealthStatus,
         push_server::routes::health::PluginHealthStatus,
@@ -103,6 +113,10 @@ async fn main() -> AnyResult<()> {
             get(push_server::routes::health::health_named),
         )
         .route("/push", post(push_server::routes::push::push))
+        .route(
+            "/push_grouped/:plugin_group",
+            post(push_server::routes::push::push_grouped),
+        )
         .route(
             "/push_named/:plugin_name",
             post(push_server::routes::push::push_named),

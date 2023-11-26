@@ -174,7 +174,7 @@ pub async fn health_all(State(state): State<ApiState>) -> PluginsHealthResponse 
         (status = 503, description = "Plugin is unhealthy.", body = [PlugingHealthResponse]),
         // ApiPath extractor error responses
         (status = 400, description = "Invalid path.", body = [ErrorResponse]),
-        (status = 500, description = "Missing params.", body = [ErrorResponse]),
+        (status = 500, description = "Missing path params.", body = [ErrorResponse]),
         (status = 500, description = "Iternal server error.", body = [ErrorResponse]),
         // Middleware error responses
         (status = 405, description = "Method not allowed.", body = [ErrorResponse])

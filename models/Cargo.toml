@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 schemars = { workspace = true }
 serde = { workspace = true }
+utoipa = { workspace = true }

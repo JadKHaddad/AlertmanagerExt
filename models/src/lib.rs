@@ -1,9 +1,13 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
+/// Alertmanager webhook payload
+///
+/// https://prometheus.io/docs/alerting/latest/configuration/#webhook_config
 pub struct AlermanagerPush {
     pub version: String,
     /// key identifying the group of alerts (e.g. to deduplicate)
@@ -21,14 +25,14 @@ pub struct AlermanagerPush {
     pub alerts: Vec<Alert>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum Status {
     Resolved,
     Firing,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Alert {
     pub status: Status,

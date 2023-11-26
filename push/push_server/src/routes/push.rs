@@ -9,8 +9,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 /// Push status
 pub enum PushStatus {
@@ -38,7 +39,7 @@ impl HasStatusCode for PushStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "type", content = "content")]
 /// Push status for a plugin
@@ -64,7 +65,7 @@ impl HasStatusCode for PluginPushStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 /// Response for a plugin push
 pub struct PluginPushResponse {
@@ -80,7 +81,7 @@ impl IntoResponse for PluginPushResponse {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 /// Response for a push
 pub struct PushResponse {
@@ -199,6 +200,20 @@ async fn push_async<A: HasPushAndPluginArcRef>(
 }
 
 /// Push alerts to all plugins asynchronously
+#[utoipa::path(post, path = "/push", request_body = AlermanagerPush, responses(
+    (status = 200, description = "Push was successful.", body = [PushResponse]),
+    (status = 207, description = "Some pushes were successful.", body = [PushResponse]),
+    (status = 500, description = "Push failed.", body = [PushResponse]),
+    (status = 404, description = "No plugins were found.", body = [PushResponse]),
+    // ApiJson extractor error responses
+    (status = 422, description = "Unprocessable Entity.", body = [ErrorResponse]),
+    (status = 400, description = "Invalid JSON.", body = [ErrorResponse]),
+    (status = 400, description = "Failed to buffer the request body.", body = [ErrorResponse]),
+    (status = 415, description = "Unsupported media type. Header is missing.", body = [ErrorResponse]),
+    (status = 413, description = "Payload too large.", body = [ErrorResponse]),
+    // Middleware error responses
+    (status = 405, description = "Method not allowed.", body = [ErrorResponse])
+))]
 #[tracing::instrument(name = "push", skip_all, fields(group_key = alertmanager_push.group_key))]
 pub async fn push(
     State(state): State<ApiState>,
@@ -212,6 +227,28 @@ pub async fn push(
 }
 
 /// Push alerts to plugins in a group asynchronously
+#[utoipa::path(post, path = "/push_grouped/{plugin_group}", 
+    params(
+        ("plugin_group" = String, Path, description = "Name of the plugin group to push to.")
+    ),
+    request_body = AlermanagerPush, responses(
+    (status = 200, description = "Push was successful.", body = [PushResponse]),
+    (status = 207, description = "Some pushes were successful.", body = [PushResponse]),
+    (status = 500, description = "Push failed.", body = [PushResponse]),
+    (status = 404, description = "No plugins were found.", body = [PushResponse]),
+    // ApiPath extractor error responses
+    (status = 400, description = "Invalid path.", body = [ErrorResponse]),
+    (status = 500, description = "Missing path params.", body = [ErrorResponse]),
+    (status = 500, description = "Iternal server error.", body = [ErrorResponse]),
+    // ApiJson extractor error responses
+    (status = 422, description = "Unprocessable Entity.", body = [ErrorResponse]),
+    (status = 400, description = "Invalid JSON.", body = [ErrorResponse]),
+    (status = 400, description = "Failed to buffer the request body.", body = [ErrorResponse]),
+    (status = 415, description = "Unsupported media type. Header is missing.", body = [ErrorResponse]),
+    (status = 413, description = "Payload too large.", body = [ErrorResponse]),
+    // Middleware error responses
+    (status = 405, description = "Method not allowed.", body = [ErrorResponse])
+))]
 #[tracing::instrument(name = "push_grouped", skip_all, fields(group_key = alertmanager_push.group_key))]
 pub async fn push_grouped(
     State(state): State<ApiState>,
@@ -230,6 +267,27 @@ pub async fn push_grouped(
 }
 
 /// Push alerts to a specific plugin
+#[utoipa::path(post, path = "/push_named/{plugin_name}", 
+    params(
+        ("plugin_name" = String, Path, description = "Name of the plugin to push to.")
+    ),
+    request_body = AlermanagerPush, responses(
+    (status = 200, description = "Push was successful.", body = [PluginPushResponse]),
+    (status = 404, description = "Plugin was not found.", body = [PluginPushResponse]),
+    (status = 500, description = "Push failed.", body = [PluginPushResponse]),
+    // ApiPath extractor error responses
+    (status = 400, description = "Invalid path.", body = [ErrorResponse]),
+    (status = 500, description = "Missing path params.", body = [ErrorResponse]),
+    (status = 500, description = "Iternal server error.", body = [ErrorResponse]),
+    // ApiJson extractor error responses
+    (status = 422, description = "Unprocessable Entity.", body = [ErrorResponse]),
+    (status = 400, description = "Invalid JSON.", body = [ErrorResponse]),
+    (status = 400, description = "Failed to buffer the request body.", body = [ErrorResponse]),
+    (status = 415, description = "Unsupported media type. Header is missing.", body = [ErrorResponse]),
+    (status = 413, description = "Payload too large.", body = [ErrorResponse]),
+    // Middleware error responses
+    (status = 405, description = "Method not allowed.", body = [ErrorResponse])
+))]
 #[tracing::instrument(name = "push_named",  skip_all, fields(group_key = alertmanager_push.group_key))]
 pub async fn push_named(
     State(state): State<ApiState>,
