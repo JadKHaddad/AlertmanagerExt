@@ -204,15 +204,7 @@ async fn push_async<A: HasPushAndPluginArcRef>(
     (status = 200, description = "Push was successful.", body = [PushResponse]),
     (status = 207, description = "Some pushes were successful.", body = [PushResponse]),
     (status = 500, description = "Push failed.", body = [PushResponse]),
-    (status = 404, description = "No plugins were found.", body = [PushResponse]),
-    // ApiJson extractor error responses
-    (status = 422, description = "Unprocessable Entity.", body = [ErrorResponse]),
-    (status = 400, description = "Invalid JSON.", body = [ErrorResponse]),
-    (status = 400, description = "Failed to buffer the request body.", body = [ErrorResponse]),
-    (status = 415, description = "Unsupported media type. Header is missing.", body = [ErrorResponse]),
-    (status = 413, description = "Payload too large.", body = [ErrorResponse]),
-    // Middleware error responses
-    (status = 405, description = "Method not allowed.", body = [ErrorResponse])
+    (status = 404, description = "No plugins were found.", body = [PushResponse])
 ))]
 #[tracing::instrument(name = "push", skip_all, fields(group_key = alertmanager_push.group_key))]
 pub async fn push(
@@ -235,19 +227,7 @@ pub async fn push(
     (status = 200, description = "Push was successful.", body = [PushResponse]),
     (status = 207, description = "Some pushes were successful.", body = [PushResponse]),
     (status = 500, description = "Push failed.", body = [PushResponse]),
-    (status = 404, description = "No plugins were found.", body = [PushResponse]),
-    // ApiPath extractor error responses
-    (status = 400, description = "Invalid path.", body = [ErrorResponse]),
-    (status = 500, description = "Missing path params.", body = [ErrorResponse]),
-    (status = 500, description = "Iternal server error.", body = [ErrorResponse]),
-    // ApiJson extractor error responses
-    (status = 422, description = "Unprocessable Entity.", body = [ErrorResponse]),
-    (status = 400, description = "Invalid JSON.", body = [ErrorResponse]),
-    (status = 400, description = "Failed to buffer the request body.", body = [ErrorResponse]),
-    (status = 415, description = "Unsupported media type. Header is missing.", body = [ErrorResponse]),
-    (status = 413, description = "Payload too large.", body = [ErrorResponse]),
-    // Middleware error responses
-    (status = 405, description = "Method not allowed.", body = [ErrorResponse])
+    (status = 404, description = "No plugins were found.", body = [PushResponse])
 ))]
 #[tracing::instrument(name = "push_grouped", skip_all, fields(group_key = alertmanager_push.group_key))]
 pub async fn push_grouped(
@@ -274,19 +254,7 @@ pub async fn push_grouped(
     request_body = AlermanagerPush, responses(
     (status = 200, description = "Push was successful.", body = [PluginPushResponse]),
     (status = 404, description = "Plugin was not found.", body = [PluginPushResponse]),
-    (status = 500, description = "Push failed.", body = [PluginPushResponse]),
-    // ApiPath extractor error responses
-    (status = 400, description = "Invalid path.", body = [ErrorResponse]),
-    (status = 500, description = "Missing path params.", body = [ErrorResponse]),
-    (status = 500, description = "Iternal server error.", body = [ErrorResponse]),
-    // ApiJson extractor error responses
-    (status = 422, description = "Unprocessable Entity.", body = [ErrorResponse]),
-    (status = 400, description = "Invalid JSON.", body = [ErrorResponse]),
-    (status = 400, description = "Failed to buffer the request body.", body = [ErrorResponse]),
-    (status = 415, description = "Unsupported media type. Header is missing.", body = [ErrorResponse]),
-    (status = 413, description = "Payload too large.", body = [ErrorResponse]),
-    // Middleware error responses
-    (status = 405, description = "Method not allowed.", body = [ErrorResponse])
+    (status = 500, description = "Push failed.", body = [PluginPushResponse])
 ))]
 #[tracing::instrument(name = "push_named",  skip_all, fields(group_key = alertmanager_push.group_key))]
 pub async fn push_named(

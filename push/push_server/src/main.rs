@@ -8,6 +8,7 @@ use postgres_plugin::{PostgresPlugin, PostgresPluginConfig, PostgresPluginMeta};
 use push_definitions::Push;
 use push_server::{
     error_response::{ErrorResponse, ErrorResponseType},
+    openapi::OpenApiDocFinalizer,
     state::ApiState,
     traits::PushAndPlugin,
 };
@@ -22,39 +23,6 @@ async fn not_found() -> ErrorResponse {
         error_type: ErrorResponseType::NotFound,
     }
 }
-
-#[derive(OpenApi)]
-#[openapi(
-    paths(
-        push_server::routes::health::health,
-        push_server::routes::health::health_all,
-        push_server::routes::health::health_named,
-        push_server::routes::push::push,
-        push_server::routes::push::push_grouped,
-        push_server::routes::push::push_named
-    ),
-    components(schemas(
-        models::AlermanagerPush,
-        models::Status,
-        models::Alert,
-        push_server::error_response::ErrorResponse,
-        push_server::error_response::ErrorResponseType,
-        push_server::error_response::PayloadInvalid,
-        push_server::error_response::PathInvalid,
-        push_server::error_response::InternalServerError,
-        push_server::routes::push::PushStatus,
-        push_server::routes::push::PluginPushStatus,
-        push_server::routes::push::PluginPushResponse,
-        push_server::routes::push::PushResponse,
-        push_server::routes::health::ServerHealthResponse,
-        push_server::routes::health::HealthStatus,
-        push_server::routes::health::PluginHealthStatus,
-        push_server::routes::health::PluginsHealthResponse,
-        push_server::routes::health::PlugingHealthResponse
-    )),
-    tags()
-)]
-struct ApiDoc;
 
 #[tokio::main]
 async fn main() -> AnyResult<()> {
@@ -103,8 +71,11 @@ async fn main() -> AnyResult<()> {
 
     let app = Router::new()
         .fallback(not_found)
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
+        .merge(
+            SwaggerUi::new("/swagger-ui")
+                .url("/api-docs/openapi.json", OpenApiDocFinalizer::openapi()),
+        )
+        .merge(Redoc::with_url("/redoc", OpenApiDocFinalizer::openapi()))
         .merge(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
         .route("/health", get(push_server::routes::health::health))
         .route("/health_all", get(push_server::routes::health::health_all))
