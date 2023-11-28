@@ -24,7 +24,7 @@ impl IntoResponse for ServerHealthResponse {
 }
 
 /// Health check for the server
-#[utoipa::path(get, path = "/health", responses(
+#[utoipa::path(get, path = "/health", tag = "health", responses(
     (status = 200, description = "Server is healthy.", body = [ServerHealthResponse])
 ))]
 pub async fn health() -> ServerHealthResponse {
@@ -127,7 +127,7 @@ async fn match_plugin_health(plugin: &Arc<dyn PushAndPlugin>) -> PlugingHealthRe
 }
 
 /// Health check for all plugins
-#[utoipa::path(get, path = "/health_all", responses(
+#[utoipa::path(get, path = "/health_all", tag = "health", responses(
     (status = 200, description = "All plugins are healthy.", body = [PluginsHealthResponse]),
     (status = 207, description = "Some plugins are unhealthy.", body = [PluginsHealthResponse]),
     (status = 503, description = "All plugins are unhealthy.", body = [PluginsHealthResponse]),
@@ -160,7 +160,7 @@ pub async fn health_all(State(state): State<ApiState>) -> PluginsHealthResponse 
 }
 
 /// Health check for a specific plugin
-#[utoipa::path(get, path = "/health_named/{plugin_name}", 
+#[utoipa::path(get, path = "/health_named/{plugin_name}", tag = "health",
     params(
         ("plugin_name" = String, Path, description = "Name of the plugin to check.")
     ),

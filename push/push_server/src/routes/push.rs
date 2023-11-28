@@ -200,7 +200,7 @@ async fn push_async<A: HasPushAndPluginArcRef>(
 }
 
 /// Push alerts to all plugins asynchronously
-#[utoipa::path(post, path = "/push", request_body = AlermanagerPush, responses(
+#[utoipa::path(post, path = "/push", tag = "push", request_body = AlermanagerPush, responses(
     (status = 200, description = "Push was successful.", body = [PushResponse]),
     (status = 207, description = "Some pushes were successful.", body = [PushResponse]),
     (status = 500, description = "Push failed.", body = [PushResponse]),
@@ -219,7 +219,7 @@ pub async fn push(
 }
 
 /// Push alerts to plugins in a group asynchronously
-#[utoipa::path(post, path = "/push_grouped/{plugin_group}", 
+#[utoipa::path(post, path = "/push_grouped/{plugin_group}", tag = "push",
     params(
         ("plugin_group" = String, Path, description = "Name of the plugin group to push to.")
     ),
@@ -247,7 +247,7 @@ pub async fn push_grouped(
 }
 
 /// Push alerts to a specific plugin
-#[utoipa::path(post, path = "/push_named/{plugin_name}", 
+#[utoipa::path(post, path = "/push_named/{plugin_name}", tag = "push",
     params(
         ("plugin_name" = String, Path, description = "Name of the plugin to push to.")
     ),
