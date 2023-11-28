@@ -895,6 +895,191 @@ impl OpenApiTrait for ApiDoc {
         _mods
             .iter()
             .for_each(|modifier| modifier.modify(&mut openapi));
+
+        for (p_n, path_item) in openapi.paths.paths.iter_mut() {
+            println!("path: {}", p_n);
+            for (_, operation) in path_item.operations.iter_mut() {
+                if let Some(ref mut parameters) = operation.parameters {
+                    'parameters: for parameter in parameters.iter_mut() {
+                        if let ParameterIn::Path = parameter.parameter_in {
+                            println!(" Has path parameter");
+
+                            operation.responses.responses.insert(
+                                String::from("400"),
+                                ResponseBuilder::new()
+                                    .description("Invalid path.")
+                                    .content(
+                                        "application/json",
+                                        ContentBuilder::new()
+                                            .schema(
+                                                ArrayBuilder::new()
+                                                    .items(Ref::from_schema_name("ErrorResponse")),
+                                            )
+                                            .build(),
+                                    )
+                                    .build()
+                                    .into(),
+                            );
+                            operation.responses.responses.insert(
+                                String::from("500"),
+                                ResponseBuilder::new()
+                                    .description("Missing path params.")
+                                    .content(
+                                        "application/json",
+                                        ContentBuilder::new()
+                                            .schema(
+                                                ArrayBuilder::new()
+                                                    .items(Ref::from_schema_name("ErrorResponse")),
+                                            )
+                                            .build(),
+                                    )
+                                    .build()
+                                    .into(),
+                            );
+                            operation.responses.responses.insert(
+                                String::from("500"),
+                                ResponseBuilder::new()
+                                    .description("Iternal server error.")
+                                    .content(
+                                        "application/json",
+                                        ContentBuilder::new()
+                                            .schema(
+                                                ArrayBuilder::new()
+                                                    .items(Ref::from_schema_name("ErrorResponse")),
+                                            )
+                                            .build(),
+                                    )
+                                    .build()
+                                    .into(),
+                            );
+
+                            break 'parameters;
+                        }
+                    }
+                }
+
+                if operation.request_body.is_some() {
+                    println!(" Has request body");
+
+                    operation.responses.responses.insert(
+                        String::from("422"),
+                        ResponseBuilder::new()
+                            .description("Unprocessable Entity.")
+                            .content(
+                                "application/json",
+                                ContentBuilder::new()
+                                    .schema(
+                                        ArrayBuilder::new()
+                                            .items(Ref::from_schema_name("ErrorResponse")),
+                                    )
+                                    .build(),
+                            )
+                            .build()
+                            .into(),
+                    );
+
+                    operation.responses.responses.insert(
+                        String::from("400"),
+                        ResponseBuilder::new()
+                            .description("Invalid JSON.")
+                            .content(
+                                "application/json",
+                                ContentBuilder::new()
+                                    .schema(
+                                        ArrayBuilder::new()
+                                            .items(Ref::from_schema_name("ErrorResponse")),
+                                    )
+                                    .build(),
+                            )
+                            .build()
+                            .into(),
+                    );
+
+                    operation.responses.responses.insert(
+                        String::from("400"),
+                        ResponseBuilder::new()
+                            .description("Failed to buffer the request body.")
+                            .content(
+                                "application/json",
+                                ContentBuilder::new()
+                                    .schema(
+                                        ArrayBuilder::new()
+                                            .items(Ref::from_schema_name("ErrorResponse")),
+                                    )
+                                    .build(),
+                            )
+                            .build()
+                            .into(),
+                    );
+
+                    operation.responses.responses.insert(
+                        String::from("415"),
+                        ResponseBuilder::new()
+                            .description("Unsupported media type. Header is missing.")
+                            .content(
+                                "application/json",
+                                ContentBuilder::new()
+                                    .schema(
+                                        ArrayBuilder::new()
+                                            .items(Ref::from_schema_name("ErrorResponse")),
+                                    )
+                                    .build(),
+                            )
+                            .build()
+                            .into(),
+                    );
+
+                    operation.responses.responses.insert(
+                        String::from("413"),
+                        ResponseBuilder::new()
+                            .description("Payload too large.")
+                            .content(
+                                "application/json",
+                                ContentBuilder::new()
+                                    .schema(
+                                        ArrayBuilder::new()
+                                            .items(Ref::from_schema_name("ErrorResponse")),
+                                    )
+                                    .build(),
+                            )
+                            .build()
+                            .into(),
+                    );
+                }
+
+                operation.responses.responses.insert(
+                    String::from("405"),
+                    ResponseBuilder::new()
+                        .description("Method not allowed.")
+                        .content(
+                            "application/json",
+                            ContentBuilder::new()
+                                .schema(
+                                    ArrayBuilder::new()
+                                        .items(Ref::from_schema_name("ErrorResponse")),
+                                )
+                                .build(),
+                        )
+                        .build()
+                        .into(),
+                );
+
+                for (res_status, _) in operation.responses.responses.iter_mut() {
+                    println!("  response: {}", res_status);
+                }
+            }
+        }
+
         openapi
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_openapi() {
+        ApiDoc::openapi();
     }
 }
