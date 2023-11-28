@@ -47,8 +47,8 @@ impl OpenApi for OpenApiDocFinalizer {
 
         for (_, path_item) in openapi.paths.paths.iter_mut() {
             for (_, operation) in path_item.operations.iter_mut() {
-                if let Some(ref mut parameters) = operation.parameters {
-                    'parameters: for parameter in parameters.iter_mut() {
+                if let Some(ref parameters) = operation.parameters {
+                    'parameters: for parameter in parameters.iter() {
                         if let ParameterIn::Path = parameter.parameter_in {
                             operation
                                 .responses
