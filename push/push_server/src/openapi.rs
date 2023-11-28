@@ -1,7 +1,7 @@
 use utoipa::{
     openapi::{
-        path::ParameterIn, ArrayBuilder, ContentBuilder, OpenApi as OpenApiDoc, Ref, RefOr,
-        ResponseBuilder,
+        path::{Operation, ParameterIn},
+        ArrayBuilder, ContentBuilder, OpenApi as OpenApiDoc, Ref, RefOr, ResponseBuilder,
     },
     OpenApi,
 };
@@ -50,85 +50,17 @@ impl OpenApi for OpenApiDocFinalizer {
                 if let Some(ref parameters) = operation.parameters {
                     'parameters: for parameter in parameters.iter() {
                         if let ParameterIn::Path = parameter.parameter_in {
-                            operation
-                                .responses
-                                .responses
-                                .entry(String::from("400"))
-                                .and_modify(|existing_response| {
-                                    if let RefOr::T(existing_response) = existing_response {
-                                        existing_response.description.push_str(" Invalid path.");
-                                    }
-                                })
-                                .or_insert(
-                                    ResponseBuilder::new()
-                                        .description("Invalid path.")
-                                        .content(
-                                            "application/json",
-                                            ContentBuilder::new()
-                                                .schema(
-                                                    ArrayBuilder::new().items(
-                                                        Ref::from_schema_name("ErrorResponse"),
-                                                    ),
-                                                )
-                                                .build(),
-                                        )
-                                        .build()
-                                        .into(),
-                                );
-                            operation
-                                .responses
-                                .responses
-                                .entry(String::from("500"))
-                                .and_modify(|existing_response| {
-                                    if let RefOr::T(existing_response) = existing_response {
-                                        existing_response
-                                            .description
-                                            .push_str(" Missing path params.");
-                                    }
-                                })
-                                .or_insert(
-                                    ResponseBuilder::new()
-                                        .description("Missing path params.")
-                                        .content(
-                                            "application/json",
-                                            ContentBuilder::new()
-                                                .schema(
-                                                    ArrayBuilder::new().items(
-                                                        Ref::from_schema_name("ErrorResponse"),
-                                                    ),
-                                                )
-                                                .build(),
-                                        )
-                                        .build()
-                                        .into(),
-                                );
-                            operation
-                                .responses
-                                .responses
-                                .entry(String::from("500"))
-                                .and_modify(|existing_response| {
-                                    if let RefOr::T(existing_response) = existing_response {
-                                        existing_response
-                                            .description
-                                            .push_str(" Iternal server error.");
-                                    }
-                                })
-                                .or_insert(
-                                    ResponseBuilder::new()
-                                        .description("Iternal server error.")
-                                        .content(
-                                            "application/json",
-                                            ContentBuilder::new()
-                                                .schema(
-                                                    ArrayBuilder::new().items(
-                                                        Ref::from_schema_name("ErrorResponse"),
-                                                    ),
-                                                )
-                                                .build(),
-                                        )
-                                        .build()
-                                        .into(),
-                                );
+                            add_error_response(operation, String::from("400"), "Invalid path.");
+                            add_error_response(
+                                operation,
+                                String::from("500"),
+                                "Missing path params.",
+                            );
+                            add_error_response(
+                                operation,
+                                String::from("500"),
+                                "Iternal server error.",
+                            );
 
                             break 'parameters;
                         }
@@ -136,169 +68,51 @@ impl OpenApi for OpenApiDocFinalizer {
                 }
 
                 if operation.request_body.is_some() {
-                    operation
-                        .responses
-                        .responses
-                        .entry(String::from("422"))
-                        .and_modify(|existing_response| {
-                            if let RefOr::T(existing_response) = existing_response {
-                                existing_response
-                                    .description
-                                    .push_str(" Unprocessable Entity.");
-                            }
-                        })
-                        .or_insert(
-                            ResponseBuilder::new()
-                                .description("Unprocessable Entity.")
-                                .content(
-                                    "application/json",
-                                    ContentBuilder::new()
-                                        .schema(
-                                            ArrayBuilder::new()
-                                                .items(Ref::from_schema_name("ErrorResponse")),
-                                        )
-                                        .build(),
-                                )
-                                .build()
-                                .into(),
-                        );
-
-                    operation
-                        .responses
-                        .responses
-                        .entry(String::from("400"))
-                        .and_modify(|existing_response| {
-                            if let RefOr::T(existing_response) = existing_response {
-                                existing_response.description.push_str(" Invalid JSON.");
-                            }
-                        })
-                        .or_insert(
-                            ResponseBuilder::new()
-                                .description("Invalid JSON.")
-                                .content(
-                                    "application/json",
-                                    ContentBuilder::new()
-                                        .schema(
-                                            ArrayBuilder::new()
-                                                .items(Ref::from_schema_name("ErrorResponse")),
-                                        )
-                                        .build(),
-                                )
-                                .build()
-                                .into(),
-                        );
-
-                    operation
-                        .responses
-                        .responses
-                        .entry(String::from("400"))
-                        .and_modify(|existing_response| {
-                            if let RefOr::T(existing_response) = existing_response {
-                                existing_response
-                                    .description
-                                    .push_str(" Failed to buffer the request body.");
-                            }
-                        })
-                        .or_insert(
-                            ResponseBuilder::new()
-                                .description("Failed to buffer the request body.")
-                                .content(
-                                    "application/json",
-                                    ContentBuilder::new()
-                                        .schema(
-                                            ArrayBuilder::new()
-                                                .items(Ref::from_schema_name("ErrorResponse")),
-                                        )
-                                        .build(),
-                                )
-                                .build()
-                                .into(),
-                        );
-
-                    operation
-                        .responses
-                        .responses
-                        .entry(String::from("415"))
-                        .and_modify(|existing_response| {
-                            if let RefOr::T(existing_response) = existing_response {
-                                existing_response
-                                    .description
-                                    .push_str(" Unsupported media type: Header is missing.");
-                            }
-                        })
-                        .or_insert(
-                            ResponseBuilder::new()
-                                .description("Unsupported media type: Header is missing.")
-                                .content(
-                                    "application/json",
-                                    ContentBuilder::new()
-                                        .schema(
-                                            ArrayBuilder::new()
-                                                .items(Ref::from_schema_name("ErrorResponse")),
-                                        )
-                                        .build(),
-                                )
-                                .build()
-                                .into(),
-                        );
-
-                    operation
-                        .responses
-                        .responses
-                        .entry(String::from("413"))
-                        .and_modify(|existing_response| {
-                            if let RefOr::T(existing_response) = existing_response {
-                                existing_response
-                                    .description
-                                    .push_str(" Payload too large.");
-                            }
-                        })
-                        .or_insert(
-                            ResponseBuilder::new()
-                                .description("Payload too large.")
-                                .content(
-                                    "application/json",
-                                    ContentBuilder::new()
-                                        .schema(
-                                            ArrayBuilder::new()
-                                                .items(Ref::from_schema_name("ErrorResponse")),
-                                        )
-                                        .build(),
-                                )
-                                .build()
-                                .into(),
-                        );
+                    add_error_response(operation, String::from("422"), "Unprocessable Entity.");
+                    add_error_response(operation, String::from("400"), "Invalid JSON.");
+                    add_error_response(
+                        operation,
+                        String::from("400"),
+                        "Failed to buffer the request body.",
+                    );
+                    add_error_response(
+                        operation,
+                        String::from("415"),
+                        "Unsupported media type: Header is missing.",
+                    );
+                    add_error_response(operation, String::from("413"), "Payload too large.");
                 }
 
-                operation
-                    .responses
-                    .responses
-                    .entry(String::from("405"))
-                    .and_modify(|existing_response| {
-                        if let RefOr::T(existing_response) = existing_response {
-                            existing_response
-                                .description
-                                .push_str(" Method not allowed.");
-                        }
-                    })
-                    .or_insert(
-                        ResponseBuilder::new()
-                            .description("Method not allowed.")
-                            .content(
-                                "application/json",
-                                ContentBuilder::new()
-                                    .schema(
-                                        ArrayBuilder::new()
-                                            .items(Ref::from_schema_name("ErrorResponse")),
-                                    )
-                                    .build(),
-                            )
-                            .build()
-                            .into(),
-                    );
+                add_error_response(operation, String::from("405"), "Method not allowed.");
             }
         }
 
         openapi
     }
+}
+
+fn add_error_response(operation: &mut Operation, status: String, description: &str) {
+    operation
+        .responses
+        .responses
+        .entry(status)
+        .and_modify(|existing_response| {
+            if let RefOr::T(existing_response) = existing_response {
+                existing_response
+                    .description
+                    .push_str(&format!(" {description}"));
+            }
+        })
+        .or_insert(
+            ResponseBuilder::new()
+                .description(description)
+                .content(
+                    "application/json",
+                    ContentBuilder::new()
+                        .schema(ArrayBuilder::new().items(Ref::from_schema_name("ErrorResponse")))
+                        .build(),
+                )
+                .build()
+                .into(),
+        );
 }
