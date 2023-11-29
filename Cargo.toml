@@ -13,6 +13,8 @@ members = [
 [workspace.dependencies]
 tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter", "time"] }
+tower = "0.4.13"
+tower-http = { version = "0.4.4", features = ["trace", "cors"] }
 async-trait = "0.1.74"
 thiserror = "1.0.50"
 anyhow = "1.0.75"

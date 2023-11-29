@@ -13,6 +13,12 @@ use push_server::{
     traits::PushAndPlugin,
 };
 use std::{net::SocketAddr, sync::Arc};
+use tower::ServiceBuilder;
+use tower_http::{
+    trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+    LatencyUnit,
+};
+use tracing::Level;
 use utoipa::OpenApi;
 use utoipa_rapidoc::RapiDoc;
 use utoipa_redoc::{Redoc, Servable};
@@ -29,7 +35,7 @@ async fn main() -> AnyResult<()> {
     if std::env::var_os("RUST_LOG").is_none() {
         std::env::set_var(
             "RUST_LOG",
-            "push_server=trace,postgres_plugin=trace,tower_http=info",
+            "push_server=trace,postgres_plugin=trace,tower_http=trace",
         );
     }
 
@@ -92,10 +98,27 @@ async fn main() -> AnyResult<()> {
             "/push_named/:plugin_name",
             post(push_server::routes::push::push_named),
         )
-        .layer(middleware::from_fn(
-            push_server::middlewares::method_not_allowed,
-        ))
-        .with_state(state);
+        .with_state(state)
+        .layer(
+            ServiceBuilder::new()
+                .layer(middleware::from_fn(
+                    push_server::middlewares::method_not_allowed,
+                ))
+                .layer(
+                    TraceLayer::new_for_http()
+                        .make_span_with(
+                            DefaultMakeSpan::new()
+                                .include_headers(false)
+                                .level(Level::INFO),
+                        )
+                        .on_request(DefaultOnRequest::new().level(Level::INFO))
+                        .on_response(
+                            DefaultOnResponse::new()
+                                .level(Level::INFO)
+                                .latency_unit(LatencyUnit::Micros),
+                        ),
+                ),
+        );
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
 
