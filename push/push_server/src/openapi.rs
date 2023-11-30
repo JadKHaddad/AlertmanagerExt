@@ -29,6 +29,7 @@ use utoipa::{
         crate::routes::push::PushStatus,
         crate::routes::push::PluginPushStatus,
         crate::routes::push::PluginPushResponse,
+        crate::routes::push::PluginPushResponseMeta,
         crate::routes::push::PushResponse,
         crate::routes::health::ServerHealthResponse,
         crate::routes::health::HealthStatus,

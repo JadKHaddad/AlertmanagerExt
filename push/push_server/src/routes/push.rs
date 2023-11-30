@@ -6,13 +6,14 @@ use crate::{
 };
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use models::AlermanagerPush;
+use plugins_definitions::PluginMeta;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, ToSchema)]
+#[derive(Debug, Clone, Serialize, JsonSchema, PartialEq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 /// Push status
 pub enum PushStatus {
@@ -40,7 +41,7 @@ impl HasStatusCode for PushStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, ToSchema)]
+#[derive(Debug, Clone, Serialize, JsonSchema, PartialEq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "type", content = "content")]
 /// Push status for a plugin
@@ -66,18 +67,49 @@ impl HasStatusCode for PluginPushStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Clone, Serialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 /// Response for a plugin push
 pub struct PluginPushResponse {
     /// Status of the push for the plugin
     pub status: PluginPushStatus,
     /// Name of the plugin
+    pub plugin_meta: PluginPushResponseMeta,
+}
+
+#[derive(Debug, Clone, Serialize, JsonSchema, ToSchema)]
+#[serde(rename_all = "camelCase")]
+/// Meta information about a plugin
+pub struct PluginPushResponseMeta {
+    /// Name of the plugin
     pub plugin_name: String,
     /// Type of the plugin, if found
-    pub plugin_type: Option<String>,
+    pub plugin_type: Option<&'static str>,
     /// Group of the plugin, if found
     pub plugin_group: Option<String>,
+}
+
+impl PluginPushResponseMeta {
+    /// Helper function
+    ///
+    /// Creates a ```PluginPushResponseMeta``` for a plugin that was not found
+    fn not_found(plugin_name: String) -> Self {
+        Self {
+            plugin_name,
+            plugin_type: None,
+            plugin_group: None,
+        }
+    }
+}
+
+impl From<PluginMeta> for PluginPushResponseMeta {
+    fn from(plugin_meta: PluginMeta) -> Self {
+        Self {
+            plugin_name: plugin_meta.name,
+            plugin_type: Some(plugin_meta.type_),
+            plugin_group: Some(plugin_meta.group),
+        }
+    }
 }
 
 impl IntoResponse for PluginPushResponse {
@@ -86,7 +118,7 @@ impl IntoResponse for PluginPushResponse {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Clone, Serialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 /// Response for a push
 pub struct PushResponse {
@@ -112,34 +144,28 @@ async fn match_plugin_push(
     match plugin.push_alert(alertmanager_push).await {
         Ok(_) => PluginPushResponse {
             status: PluginPushStatus::Ok,
-            plugin_name: plugin.name().to_string(),
-            plugin_type: Some(plugin.type_().to_string()),
-            plugin_group: Some(plugin.group().to_string()),
+            plugin_meta: plugin.meta().into(),
         },
         Err(error) => {
-            tracing::error!(name=plugin.name(), %error, "Failed to push alerts to plugin.");
+            tracing::error!(name=plugin.meta().name, %error, "Failed to push alerts to plugin.");
             PluginPushResponse {
                 status: PluginPushStatus::Failed {
                     message: error.to_string(),
                 },
-                plugin_name: plugin.name().to_string(),
-                plugin_type: Some(plugin.type_().to_string()),
-                plugin_group: Some(plugin.group().to_string()),
+                plugin_meta: plugin.meta().into(),
             }
         }
     }
 }
 
+/// Helper struct
+///
 /// Join handle for a plugin push response
 struct PluginPushResponseJoinHandle {
     /// Join handle
     join_handle: JoinHandle<PluginPushResponse>,
-    /// Name of the plugin, in case the join handle panics or is cancelled, we still want to know which plugin it was
-    plugin_name: String,
-    /// Type of the plugin, in case the join handle panics or is cancelled
-    plugin_type: String,
-    /// Group of the plugin, in case the join handle panics or is cancelled
-    plugin_group: String,
+    /// in case the join handle panics or is cancelled, we still want to know which plugin it was
+    plugin_meta: PluginMeta,
 }
 
 /// Helper function
@@ -168,9 +194,7 @@ async fn push_async<A: HasPushAndPluginArcRef>(
             tokio::spawn(async move { match_plugin_push(&plugin_c, &alertmanager_push_c).await });
         plugin_response_handles.push(PluginPushResponseJoinHandle {
             join_handle: handle,
-            plugin_name: plugin.arc_ref().name().to_string(),
-            plugin_type: plugin.arc_ref().type_().to_string(),
-            plugin_group: plugin.arc_ref().group().to_string(),
+            plugin_meta: plugin.arc_ref().meta(),
         });
     }
 
@@ -179,33 +203,21 @@ async fn push_async<A: HasPushAndPluginArcRef>(
             Ok(plugin_push_response) => plugin_push_response,
             Err(error) => {
                 if error.is_cancelled() {
-                    tracing::error!(name=plugin_response_handle.plugin_name, %error, "Plugin push handler was cancelled.");
-                    PluginPushResponse {
-                        status: PluginPushStatus::Failed {
-                            message: error.to_string(),
-                        },
-                        plugin_name: plugin_response_handle.plugin_name.clone(),
-                        plugin_type: Some(plugin_response_handle.plugin_type.clone()),
-                        plugin_group: Some(plugin_response_handle.plugin_group.clone()),
-                    }
+                    tracing::error!(name=&plugin_response_handle.plugin_meta.name, %error, "Plugin push handler was cancelled.");
                 } else {
-                    tracing::error!(name=plugin_response_handle.plugin_name, %error, "Plugin push handler panicked.");
-                    PluginPushResponse {
-                        status: PluginPushStatus::Failed {
-                            message: error.to_string(),
-                        },
-                        plugin_name: plugin_response_handle.plugin_name.clone(),
-                        plugin_type: Some(plugin_response_handle.plugin_type.clone()),
-                        plugin_group: Some(plugin_response_handle.plugin_group.clone()),
-                    }
+                    tracing::error!(name=plugin_response_handle.plugin_meta.name, %error, "Plugin push handler panicked.");
+                }
+                PluginPushResponse {
+                    status: PluginPushStatus::Failed {
+                        message: error.to_string(),
+                    },
+                    plugin_meta: plugin_response_handle.plugin_meta.clone().into(),
                 }
             }
         };
-        let push_label = PushLabel {
-            plugin_name: plugin_response_handle.plugin_name,
-            plugin_type: plugin_response_handle.plugin_type,
-            plugin_group: plugin_response_handle.plugin_group,
-        };
+
+        let push_label = PushLabel::from(plugin_response_handle.plugin_meta);
+
         match plugin_push_response.status {
             PluginPushStatus::Ok => {
                 ok_push_count += 1;
@@ -271,7 +283,7 @@ pub async fn push_grouped(
     let affected_plugins: Vec<&Arc<dyn PushAndPlugin>> = state
         .plugins
         .iter()
-        .filter(|p| p.group() == plugin_group)
+        .filter(|p| p.meta().group == plugin_group)
         .collect();
 
     push_async(&state, &affected_plugins, &alertmanager_push).await
@@ -294,15 +306,11 @@ pub async fn push_named(
     ApiJson(alertmanager_push): ApiJson<AlermanagerPush>,
 ) -> PluginPushResponse {
     tracing::trace!(name = plugin_name, "Pushing alerts to plugin.");
-    let plugin = state.plugins.iter().find(|p| p.name() == plugin_name);
+    let plugin = state.plugins.iter().find(|p| p.meta().name == plugin_name);
     match plugin {
         Some(plugin) => {
             let push_response = match_plugin_push(plugin, &alertmanager_push).await;
-            let push_label = PushLabel {
-                plugin_name: plugin.name().to_string(),
-                plugin_type: plugin.type_().to_string(),
-                plugin_group: plugin.group().to_string(),
-            };
+            let push_label = PushLabel::from(plugin.meta());
             match push_response.status {
                 PluginPushStatus::Ok => {
                     state.prometheus_client.add_success_push(&push_label);
@@ -315,9 +323,7 @@ pub async fn push_named(
         }
         None => PluginPushResponse {
             status: PluginPushStatus::NotFound,
-            plugin_name,
-            plugin_type: None,
-            plugin_group: None,
+            plugin_meta: PluginPushResponseMeta::not_found(plugin_name),
         },
     }
 }

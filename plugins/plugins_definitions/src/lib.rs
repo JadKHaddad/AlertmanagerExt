@@ -3,26 +3,26 @@ use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
 #[error("Plugin health check failed: {reason}")]
+/// Error returned by the health check
 pub struct HealthError {
     pub reason: String,
 }
 
+#[derive(Debug, Clone)]
+/// Meta information about the plugin
+pub struct PluginMeta {
+    /// Name of the plugin
+    pub name: String,
+    /// Type of the plugin
+    pub type_: &'static str,
+    /// Group of the plugin
+    pub group: String,
+}
+
 #[async_trait]
 pub trait Plugin: Send + Sync + 'static {
-    /// Type of plugin
-    ///
-    /// Used to identify the plugin
-    fn type_(&self) -> &str;
-
-    /// Name of the plugin
-    ///
-    /// Used to identify the plugin among others of the same type
-    fn name(&self) -> &str;
-
-    /// Group of the plugin
-    ///
-    /// Multiple plugins can be grouped together
-    fn group(&self) -> &str;
+    /// Meta information about the plugin
+    fn meta(&self) -> PluginMeta;
 
     /// Health check
     async fn health(&self) -> Result<(), HealthError>;
