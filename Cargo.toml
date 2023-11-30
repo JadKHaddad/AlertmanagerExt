@@ -9,6 +9,7 @@ members = [
     "plugins/plugins_definitions",
     "plugins/postgres_plugin",
     "plugins/mongo_plugin",
+    "plugins/sqlite_plugin",
 ]
 
 [workspace.dependencies]
