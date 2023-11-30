@@ -6,15 +6,25 @@ use utoipa::ToSchema;
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[non_exhaustive]
 /// Default error response
 pub struct ErrorResponse {
     /// Error type
     pub error_type: ErrorResponseType,
 }
 
+impl ErrorResponse {
+    pub fn not_found() -> Self {
+        Self {
+            error_type: ErrorResponseType::NotFound,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(tag = "type", content = "error")]
 #[serde(rename_all = "camelCase")]
+#[non_exhaustive]
 pub enum ErrorResponseType {
     /// Payload is invalid
     PayloadInvalid(PayloadInvalid),
@@ -47,6 +57,7 @@ pub struct PathInvalid {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[non_exhaustive]
 pub struct InternalServerError {
     reason: String,
 }

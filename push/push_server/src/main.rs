@@ -7,9 +7,7 @@ use axum::{
 use postgres_plugin::{PostgresPlugin, PostgresPluginConfig, PostgresPluginMeta};
 use push_definitions::Push;
 use push_server::{
-    error_response::{ErrorResponse, ErrorResponseType},
-    openapi::OpenApiDocFinalizer,
-    state::ApiState,
+    error_response::ErrorResponse, openapi::OpenApiDocFinalizer, state::ApiState,
     traits::PushAndPlugin,
 };
 use std::{net::SocketAddr, sync::Arc};
@@ -25,9 +23,7 @@ use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
 
 async fn not_found() -> ErrorResponse {
-    ErrorResponse {
-        error_type: ErrorResponseType::NotFound,
-    }
+    ErrorResponse::not_found()
 }
 
 #[tokio::main]
