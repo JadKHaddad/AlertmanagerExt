@@ -188,7 +188,7 @@ impl Plugin for MongoPlugin {
         }
     }
 
-    #[tracing::instrument(name = "health", skip(self), fields(self.name = %self.name(), self.group = %self.group(), self.type_ = %self.type_()))]
+    #[tracing::instrument(name = "health", skip(self), fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
     async fn health(&self) -> Result<(), HealthError> {
         self.database()
             .run_command(doc! { "ping": 1 }, None)
@@ -203,7 +203,7 @@ impl Plugin for MongoPlugin {
 
 #[async_trait]
 impl Push for MongoPlugin {
-    #[tracing::instrument(name = "push_initialize", skip(self), fields(self.name = %self.name(), self.group = %self.group(), self.type_ = %self.type_()))]
+    #[tracing::instrument(name = "push_initialize", skip(self), fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
     async fn initialize(&mut self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
         let _ = self.config.take();
@@ -212,7 +212,7 @@ impl Push for MongoPlugin {
         Ok(())
     }
 
-    #[tracing::instrument(name = "push_alert", skip_all, fields(self.name = %self.name(), self.group = %self.group(), self.type_ = %self.type_()))]
+    #[tracing::instrument(name = "push_alert", skip_all, fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
     async fn push_alert(&self, alertmanager_push: &AlermanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
 

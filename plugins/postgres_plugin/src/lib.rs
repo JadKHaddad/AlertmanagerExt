@@ -156,7 +156,7 @@ impl Plugin for PostgresPlugin {
         }
     }
 
-    #[tracing::instrument(name = "health", skip(self), fields(self.name = %self.name(), self.group = %self.group(), self.type_ = %self.type_()))]
+    #[tracing::instrument(name = "health", skip(self), fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
     async fn health(&self) -> Result<(), HealthError> {
         tracing::trace!("Checking health.");
         let _conn = self.pool.get().await.map_err(|error| HealthError {
@@ -170,7 +170,7 @@ impl Plugin for PostgresPlugin {
 
 #[async_trait]
 impl Push for PostgresPlugin {
-    #[tracing::instrument(name = "push_initialize", skip(self), fields(self.name = %self.name(), self.group = %self.group(), self.type_ = %self.type_()))]
+    #[tracing::instrument(name = "push_initialize", skip(self), fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
     async fn initialize(&mut self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
 
@@ -204,14 +204,13 @@ impl Push for PostgresPlugin {
         Ok(())
     }
 
-    #[tracing::instrument(name = "push_alert", skip_all, fields(self.name = %self.name(), self.group = %self.group(), self.type_ = %self.type_()))]
+    #[tracing::instrument(name = "push_alert", skip_all, fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
     async fn push_alert(&self, alertmanager_push: &AlermanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
         let mut conn = self.pool.get().await.map_err(|error| PushError {
             reason: error.to_string(),
         })?;
 
-        // TODO: Test the transaction with some invalid dates!
         tracing::trace!("Starting transaction.");
         conn.transaction::<(), InternalPushError, _>(|mut conn| {
             async move {
