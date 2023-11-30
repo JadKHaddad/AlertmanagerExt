@@ -1,12 +1,12 @@
 use crate::database::models::alert_status::AlertStatusModel;
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
-use diesel::result::Error as DieselError;
-use diesel::{Connection, PgConnection};
-use diesel_async::{pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection};
-use diesel_async::{AsyncConnection, RunQueryDsl};
-use diesel_migrations::MigrationHarness;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations};
+use diesel::{result::Error as DieselError, Connection, PgConnection};
+use diesel_async::{
+    pooled_connection::AsyncDieselConnectionManager, AsyncConnection, AsyncPgConnection,
+    RunQueryDsl,
+};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use models::AlermanagerPush;
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use push_definitions::{InitializeError, Push, PushError};
@@ -111,6 +111,7 @@ pub struct PostgresPluginConfig {
     pub connection_timeout: std::time::Duration,
 }
 
+/// Metadata for the Postgres plugin
 pub struct PostgresPluginMeta {
     /// Name of the plugin
     pub name: String,
@@ -118,6 +119,9 @@ pub struct PostgresPluginMeta {
     pub group: String,
 }
 
+/// Postgres plugin
+///
+/// Based on [`diesel`], [`diesel_async`] and [`bb8`].
 pub struct PostgresPlugin {
     meta: PostgresPluginMeta,
     config: Option<Box<PostgresPluginConfig>>,

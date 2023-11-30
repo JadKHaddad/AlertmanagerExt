@@ -121,6 +121,9 @@ pub struct MongoPluginMeta {
     pub group: String,
 }
 
+/// Mongo plugin
+///
+/// Based on [`mongodb`]
 pub struct MongoPlugin {
     meta: MongoPluginMeta,
     config: Option<Box<MongoPluginConfig>>,
