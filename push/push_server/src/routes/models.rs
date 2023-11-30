@@ -18,7 +18,7 @@ pub struct PluginResponseMeta {
 impl PluginResponseMeta {
     /// Helper function
     ///
-    /// Creates a ```PluginPushResponseMeta``` for a plugin that was not found
+    /// Creates a [`PluginResponseMeta`] for a plugin that was not found
     pub fn not_found(plugin_name: String) -> Self {
         Self {
             plugin_name,

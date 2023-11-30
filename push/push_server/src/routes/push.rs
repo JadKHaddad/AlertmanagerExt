@@ -103,7 +103,7 @@ impl IntoResponse for PushResponse {
 
 /// Helper function
 ///
-/// Avoids duplicate code in ```push```, ```push_grouped``` (push_async) and ```push_named```
+/// Avoids duplicate code in [`push`], [`push_grouped`] ([`push_async`]) and [`push_named`]
 async fn match_plugin_push(
     plugin: &Arc<dyn PushAndPlugin>,
     alertmanager_push: &AlermanagerPush,

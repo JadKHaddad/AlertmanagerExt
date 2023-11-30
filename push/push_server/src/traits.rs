@@ -15,7 +15,7 @@ pub trait HasStatusCode {
 
 /// Helper trait
 ///
-/// Allows us to use functions with ```Vec<Arc<dyn PushAndPlugin>>``` and ```Vec<&Arc<dyn PushAndPlugin>>``` without duplicating code and unnecessary ```iter().collect()``` calls
+/// Allows us to use functions with [`Vec`]<[`Arc`]<dyn [`PushAndPlugin`]>> and [`Vec`]<&[`Arc`]<dyn [`PushAndPlugin`]>> without duplicating code and unnecessary ```iter().collect()``` calls
 pub trait HasPushAndPluginArcRef {
     fn arc_ref(&self) -> &Arc<dyn PushAndPlugin>;
 }
