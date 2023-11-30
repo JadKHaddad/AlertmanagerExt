@@ -375,7 +375,9 @@ impl Push for PostgresPlugin {
                             })?;
                     }
                 }
+
                 tracing::trace!("Committing transaction.");
+
                 Ok(())
             }
             .scope_boxed()
