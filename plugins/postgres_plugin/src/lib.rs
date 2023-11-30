@@ -146,13 +146,13 @@ impl PostgresPlugin {
 impl Plugin for PostgresPlugin {
     fn meta(&self) -> PluginMeta {
         PluginMeta {
-            name: self.meta.name.clone(),
+            name: &self.meta.name,
             type_: "postgres",
-            group: self.meta.group.clone(),
+            group: &self.meta.group,
         }
     }
 
-    #[tracing::instrument(name = "health", skip(self), fields(self.name = %self.meta().name, self.group = %self.meta().group, self.type_ = %self.meta().type_))]
+    #[tracing::instrument(name = "health", skip(self), fields(self.name = %self.name(), self.group = %self.group(), self.type_ = %self.type_()))]
     async fn health(&self) -> Result<(), HealthError> {
         tracing::trace!("Checking health.");
         let _conn = self.pool.get().await.map_err(|error| HealthError {
@@ -166,7 +166,7 @@ impl Plugin for PostgresPlugin {
 
 #[async_trait]
 impl Push for PostgresPlugin {
-    #[tracing::instrument(name = "push_initialize", skip(self), fields(self.name = %self.meta().name, self.group = %self.meta().group, self.type_ = %self.meta().type_))]
+    #[tracing::instrument(name = "push_initialize", skip(self), fields(self.name = %self.name(), self.group = %self.group(), self.type_ = %self.type_()))]
     async fn initialize(&mut self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
 
@@ -200,7 +200,7 @@ impl Push for PostgresPlugin {
         Ok(())
     }
 
-    #[tracing::instrument(name = "push_alert", skip_all, fields(self.name = %self.meta().name, self.group = %self.meta().group, self.type_ = %self.meta().type_))]
+    #[tracing::instrument(name = "push_alert", skip_all, fields(self.name = %self.name(), self.group = %self.group(), self.type_ = %self.type_()))]
     async fn push_alert(&self, alertmanager_push: &AlermanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
         let mut conn = self.pool.get().await.map_err(|error| PushError {

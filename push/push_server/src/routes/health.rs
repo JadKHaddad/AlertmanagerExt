@@ -1,3 +1,4 @@
+use crate::routes::models::PluginResponseMeta;
 use crate::traits::{HasStatusCode, PushAndPlugin};
 use crate::{extractors::ApiPath, state::ApiState};
 use axum::extract::State;
@@ -62,8 +63,10 @@ pub enum PluginHealthStatus {
 #[derive(Clone, Debug, Serialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PlugingHealthResponse {
+    /// Health status for the plugin
     pub status: PluginHealthStatus,
-    pub plugin_name: String,
+    /// Meta information about the plugin
+    pub plugin_meta: PluginResponseMeta,
 }
 
 impl HasStatusCode for PlugingHealthResponse {
@@ -112,15 +115,15 @@ async fn match_plugin_health(plugin: &Arc<dyn PushAndPlugin>) -> PlugingHealthRe
     match plugin.health().await {
         Ok(_) => PlugingHealthResponse {
             status: PluginHealthStatus::Healthy,
-            plugin_name: plugin.meta().name,
+            plugin_meta: plugin.meta().into(),
         },
         Err(error) => {
-            tracing::error!(name=plugin.meta().name, %error, "Plugin is unhealthy.");
+            tracing::error!(name=plugin.name(), %error, "Plugin is unhealthy.");
             PlugingHealthResponse {
                 status: PluginHealthStatus::Unhealthy {
                     message: error.to_string(),
                 },
-                plugin_name: plugin.meta().name,
+                plugin_meta: plugin.meta().into(),
             }
         }
     }
@@ -175,12 +178,12 @@ pub async fn health_named(
     ApiPath(plugin_name): ApiPath<String>,
 ) -> PlugingHealthResponse {
     tracing::trace!(plugin_name = plugin_name, "Health check for plugin.");
-    let plugin = state.plugins.iter().find(|p| p.meta().name == plugin_name);
+    let plugin = state.plugins.iter().find(|p| p.name() == plugin_name);
     match plugin {
         Some(plugin) => match_plugin_health(plugin).await,
         None => PlugingHealthResponse {
             status: PluginHealthStatus::NotFound,
-            plugin_name,
+            plugin_meta: PluginResponseMeta::not_found(plugin_name),
         },
     }
 }

@@ -1,4 +1,4 @@
-use plugins_definitions::PluginMeta;
+use plugins_definitions::{OwnedPluginMeta, PluginMeta};
 use prometheus_client::{
     encoding::{text, EncodeLabelSet},
     metrics::{counter::Counter, family::Family},
@@ -13,12 +13,18 @@ pub struct PushLabel {
     pub plugin_group: String,
 }
 
-impl From<PluginMeta> for PushLabel {
-    fn from(meta: PluginMeta) -> Self {
+impl<'a> From<PluginMeta<'a>> for PushLabel {
+    fn from(plugin_meta: PluginMeta) -> Self {
+        Self::from(OwnedPluginMeta::from(plugin_meta))
+    }
+}
+
+impl From<OwnedPluginMeta> for PushLabel {
+    fn from(plugin_meta: OwnedPluginMeta) -> Self {
         Self {
-            plugin_name: meta.name,
-            plugin_type: meta.type_,
-            plugin_group: meta.group,
+            plugin_name: plugin_meta.name,
+            plugin_type: plugin_meta.type_,
+            plugin_group: plugin_meta.group,
         }
     }
 }
