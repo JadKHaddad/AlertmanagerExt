@@ -1,5 +1,6 @@
 use crate::{
     extractors::{ApiJson, ApiPath},
+    prometheus_client::PushLabel,
     state::ApiState,
     traits::{HasPushAndPluginArcRef, HasStatusCode, PushAndPlugin},
 };
@@ -73,6 +74,10 @@ pub struct PluginPushResponse {
     pub status: PluginPushStatus,
     /// Name of the plugin
     pub plugin_name: String,
+    /// Type of the plugin, if found
+    pub plugin_type: Option<String>,
+    /// Group of the plugin, if found
+    pub plugin_group: Option<String>,
 }
 
 impl IntoResponse for PluginPushResponse {
@@ -108,6 +113,8 @@ async fn match_plugin_push(
         Ok(_) => PluginPushResponse {
             status: PluginPushStatus::Ok,
             plugin_name: plugin.name().to_string(),
+            plugin_type: Some(plugin.type_().to_string()),
+            plugin_group: Some(plugin.group().to_string()),
         },
         Err(error) => {
             tracing::error!(name=plugin.name(), %error, "Failed to push alerts to plugin.");
@@ -116,6 +123,8 @@ async fn match_plugin_push(
                     message: error.to_string(),
                 },
                 plugin_name: plugin.name().to_string(),
+                plugin_type: Some(plugin.type_().to_string()),
+                plugin_group: Some(plugin.group().to_string()),
             }
         }
     }
@@ -127,12 +136,17 @@ struct PluginPushResponseJoinHandle {
     join_handle: JoinHandle<PluginPushResponse>,
     /// Name of the plugin, in case the join handle panics or is cancelled, we still want to know which plugin it was
     plugin_name: String,
+    /// Type of the plugin, in case the join handle panics or is cancelled
+    plugin_type: String,
+    /// Group of the plugin, in case the join handle panics or is cancelled
+    plugin_group: String,
 }
 
 /// Helper function
 ///
 /// Pushes alerts asynchronously
 async fn push_async<A: HasPushAndPluginArcRef>(
+    state: &ApiState,
     affected_plugins: &Vec<A>,
     alertmanager_push: &AlermanagerPush,
 ) -> PushResponse {
@@ -155,6 +169,8 @@ async fn push_async<A: HasPushAndPluginArcRef>(
         plugin_response_handles.push(PluginPushResponseJoinHandle {
             join_handle: handle,
             plugin_name: plugin.arc_ref().name().to_string(),
+            plugin_type: plugin.arc_ref().type_().to_string(),
+            plugin_group: plugin.arc_ref().group().to_string(),
         });
     }
 
@@ -168,7 +184,9 @@ async fn push_async<A: HasPushAndPluginArcRef>(
                         status: PluginPushStatus::Failed {
                             message: error.to_string(),
                         },
-                        plugin_name: plugin_response_handle.plugin_name,
+                        plugin_name: plugin_response_handle.plugin_name.clone(),
+                        plugin_type: Some(plugin_response_handle.plugin_type.clone()),
+                        plugin_group: Some(plugin_response_handle.plugin_group.clone()),
                     }
                 } else {
                     tracing::error!(name=plugin_response_handle.plugin_name, %error, "Plugin push handler panicked.");
@@ -176,13 +194,26 @@ async fn push_async<A: HasPushAndPluginArcRef>(
                         status: PluginPushStatus::Failed {
                             message: error.to_string(),
                         },
-                        plugin_name: plugin_response_handle.plugin_name,
+                        plugin_name: plugin_response_handle.plugin_name.clone(),
+                        plugin_type: Some(plugin_response_handle.plugin_type.clone()),
+                        plugin_group: Some(plugin_response_handle.plugin_group.clone()),
                     }
                 }
             }
         };
-        if let PluginPushStatus::Ok = plugin_push_response.status {
-            ok_push_count += 1;
+        let push_label = PushLabel {
+            plugin_name: plugin_response_handle.plugin_name,
+            plugin_type: plugin_response_handle.plugin_type,
+            plugin_group: plugin_response_handle.plugin_group,
+        };
+        match plugin_push_response.status {
+            PluginPushStatus::Ok => {
+                ok_push_count += 1;
+                state.prometheus_client.add_success_push(&push_label);
+            }
+            _ => {
+                state.prometheus_client.add_failed_push(&push_label);
+            }
         }
         plugin_push_responses.push(plugin_push_response);
     }
@@ -215,7 +246,7 @@ pub async fn push(
 
     let affected_plugins = &state.plugins;
 
-    push_async(affected_plugins, &alertmanager_push).await
+    push_async(&state, affected_plugins, &alertmanager_push).await
 }
 
 /// Push alerts to plugins in a group asynchronously
@@ -243,7 +274,7 @@ pub async fn push_grouped(
         .filter(|p| p.group() == plugin_group)
         .collect();
 
-    push_async(&affected_plugins, &alertmanager_push).await
+    push_async(&state, &affected_plugins, &alertmanager_push).await
 }
 
 /// Push alerts to a specific plugin
@@ -265,10 +296,28 @@ pub async fn push_named(
     tracing::trace!(name = plugin_name, "Pushing alerts to plugin.");
     let plugin = state.plugins.iter().find(|p| p.name() == plugin_name);
     match plugin {
-        Some(plugin) => match_plugin_push(plugin, &alertmanager_push).await,
+        Some(plugin) => {
+            let push_response = match_plugin_push(plugin, &alertmanager_push).await;
+            let push_label = PushLabel {
+                plugin_name: plugin.name().to_string(),
+                plugin_type: plugin.type_().to_string(),
+                plugin_group: plugin.group().to_string(),
+            };
+            match push_response.status {
+                PluginPushStatus::Ok => {
+                    state.prometheus_client.add_success_push(&push_label);
+                }
+                _ => {
+                    state.prometheus_client.add_failed_push(&push_label);
+                }
+            }
+            push_response
+        }
         None => PluginPushResponse {
             status: PluginPushStatus::NotFound,
             plugin_name,
+            plugin_type: None,
+            plugin_group: None,
         },
     }
 }

@@ -83,6 +83,7 @@ async fn main() -> AnyResult<()> {
         )
         .merge(Redoc::with_url("/redoc", OpenApiDocFinalizer::openapi()))
         .merge(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
+        .route("/metrics", get(push_server::routes::metrics::metrics))
         .route("/health", get(push_server::routes::health::health))
         .route("/health_all", get(push_server::routes::health::health_all))
         .route(

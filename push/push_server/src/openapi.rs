@@ -9,6 +9,7 @@ use utoipa::{
 #[derive(OpenApi)]
 #[openapi(
     paths(
+        crate::routes::metrics::metrics,
         crate::routes::health::health,
         crate::routes::health::health_all,
         crate::routes::health::health_named,

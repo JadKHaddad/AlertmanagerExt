@@ -25,3 +25,4 @@ utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
 utoipa-redoc = { workspace = true }
 utoipa-rapidoc = { workspace = true }
+prometheus-client = { workspace = true }
