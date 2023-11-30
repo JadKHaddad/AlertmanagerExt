@@ -14,5 +14,5 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
-chrono = { versio = "0.4.31", features = ["serde"] }
+chrono = { workspace = true }
 mongodb = "2.7.1"

@@ -17,7 +17,7 @@ diesel = { version = "2.1.2", features = [
 ] }
 diesel_migrations = "2.1.0"
 bb8 = "0.8"
-chrono = "0.4"
+chrono = { workspace = true }
 diesel-async = { version = "0.3", features = ["postgres", "bb8"] }
 tokio = { workspace = true }
 async-trait = { workspace = true }

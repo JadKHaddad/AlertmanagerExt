@@ -1,14 +1,21 @@
-use ::models::AlermanagerPush;
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
-use mongodb::bson::doc;
-use mongodb::error::Error as MongoError;
-use mongodb::{options::ClientOptions, Client, Collection, Database};
+use database::models::{
+    alert::{InsertableAlert, InsertableAlertAnnotation, InsertableAlertLabel},
+    group::{
+        InsertableAlertGroup, InsertableCommonAnnotation, InsertableCommonLabel,
+        InsertableGroupLabel,
+    },
+};
+use models::AlermanagerPush;
+use mongodb::{
+    bson::doc, error::Error as MongoError, options::ClientOptions, Client, Collection, Database,
+};
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use push_definitions::{InitializeError, Push, PushError};
 use thiserror::Error as ThisError;
 
-mod models;
+mod database;
 
 #[derive(ThisError, Debug)]
 enum InternalPushError {
@@ -149,31 +156,31 @@ impl MongoPlugin {
         self.client.database("alertmanager")
     }
 
-    fn alert_group_collection(&self) -> Collection<models::InsertableAlertGroup> {
+    fn alert_group_collection(&self) -> Collection<InsertableAlertGroup> {
         self.database().collection("alert_group")
     }
 
-    fn group_label_collection(&self) -> Collection<models::InsertableGroupLabel> {
+    fn group_label_collection(&self) -> Collection<InsertableGroupLabel> {
         self.database().collection("group_label")
     }
 
-    fn common_label_collection(&self) -> Collection<models::InsertableCommonLabel> {
+    fn common_label_collection(&self) -> Collection<InsertableCommonLabel> {
         self.database().collection("common_label")
     }
 
-    fn common_annotation_collection(&self) -> Collection<models::InsertableCommonAnnotation> {
+    fn common_annotation_collection(&self) -> Collection<InsertableCommonAnnotation> {
         self.database().collection("common_annotation")
     }
 
-    fn alert_collection(&self) -> Collection<models::InsertableAlert> {
+    fn alert_collection(&self) -> Collection<InsertableAlert> {
         self.database().collection("alert")
     }
 
-    fn alert_label_collection(&self) -> Collection<models::InsertableAlertLabel> {
+    fn alert_label_collection(&self) -> Collection<InsertableAlertLabel> {
         self.database().collection("alert_label")
     }
 
-    fn alert_annotation_collection(&self) -> Collection<models::InsertableAlertAnnotation> {
+    fn alert_annotation_collection(&self) -> Collection<InsertableAlertAnnotation> {
         self.database().collection("alert_annotation")
     }
 }
@@ -227,7 +234,7 @@ impl Push for MongoPlugin {
             .await
             .map_err(|error| InternalPushError::StartTransaction { error })?;
 
-        let alert_group = models::InsertableAlertGroup {
+        let alert_group = InsertableAlertGroup {
             group_key: alertmanager_push.group_key.clone(),
             truncated_alerts: alertmanager_push.truncated_alerts,
             status: alertmanager_push.status.clone(),
@@ -253,7 +260,7 @@ impl Push for MongoPlugin {
         let group_labels = alertmanager_push
             .group_labels
             .iter()
-            .map(|(name, value)| models::InsertableGroupLabel {
+            .map(|(name, value)| InsertableGroupLabel {
                 alert_group_id,
                 name: name.clone(),
                 value: value.clone(),
@@ -272,7 +279,7 @@ impl Push for MongoPlugin {
         let common_labels = alertmanager_push
             .common_labels
             .iter()
-            .map(|(name, value)| models::InsertableCommonLabel {
+            .map(|(name, value)| InsertableCommonLabel {
                 alert_group_id,
                 name: name.clone(),
                 value: value.clone(),
@@ -291,7 +298,7 @@ impl Push for MongoPlugin {
         let common_annotations = alertmanager_push
             .common_annotations
             .iter()
-            .map(|(name, value)| models::InsertableCommonAnnotation {
+            .map(|(name, value)| InsertableCommonAnnotation {
                 alert_group_id,
                 name: name.clone(),
                 value: value.clone(),
@@ -333,7 +340,7 @@ impl Push for MongoPlugin {
                 None
             };
 
-            let insertable_alert = models::InsertableAlert {
+            let insertable_alert = InsertableAlert {
                 status: alert.status.clone(),
                 starts_at,
                 ends_at,
@@ -360,7 +367,7 @@ impl Push for MongoPlugin {
             let labels = alert
                 .labels
                 .iter()
-                .map(|(name, value)| models::InsertableAlertLabel {
+                .map(|(name, value)| InsertableAlertLabel {
                     alert_id,
                     name: name.clone(),
                     value: value.clone(),
@@ -380,7 +387,7 @@ impl Push for MongoPlugin {
             let annotations = alert
                 .annotations
                 .iter()
-                .map(|(name, value)| models::InsertableAlertAnnotation {
+                .map(|(name, value)| InsertableAlertAnnotation {
                     alert_id,
                     name: name.clone(),
                     value: value.clone(),
