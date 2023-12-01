@@ -13,6 +13,8 @@ diesel::table! {
     alert (id) {
         id -> Int4,
         alert_group_id -> Int4,
+        #[max_length = 255]
+        group_key -> Varchar,
         status -> AlertStatus,
         starts_at -> Timestamp,
         ends_at -> Nullable<Timestamp>,
@@ -24,9 +26,24 @@ diesel::table! {
 }
 
 diesel::table! {
-    alert_annotation (id) {
+    alert_alert_annotations (id) {
         id -> Int4,
         alert_id -> Int4,
+        alert_annotation_id -> Int4,
+    }
+}
+
+diesel::table! {
+    alert_alert_labels (id) {
+        id -> Int4,
+        alert_id -> Int4,
+        alert_label_id -> Int4,
+    }
+}
+
+diesel::table! {
+    alert_annotation (id) {
+        id -> Int4,
         #[max_length = 255]
         name -> Varchar,
         #[max_length = 255]
@@ -52,9 +69,32 @@ diesel::table! {
 }
 
 diesel::table! {
+    alert_group_common_annotations (id) {
+        id -> Int4,
+        alert_group_id -> Int4,
+        common_annotation_id -> Int4,
+    }
+}
+
+diesel::table! {
+    alert_group_common_labels (id) {
+        id -> Int4,
+        alert_group_id -> Int4,
+        common_label_id -> Int4,
+    }
+}
+
+diesel::table! {
+    alert_group_group_labels (id) {
+        id -> Int4,
+        alert_group_id -> Int4,
+        group_label_id -> Int4,
+    }
+}
+
+diesel::table! {
     alert_label (id) {
         id -> Int4,
-        alert_id -> Int4,
         #[max_length = 255]
         name -> Varchar,
         #[max_length = 255]
@@ -65,7 +105,6 @@ diesel::table! {
 diesel::table! {
     common_annotation (id) {
         id -> Int4,
-        alert_group_id -> Int4,
         #[max_length = 255]
         name -> Varchar,
         #[max_length = 255]
@@ -76,7 +115,6 @@ diesel::table! {
 diesel::table! {
     common_label (id) {
         id -> Int4,
-        alert_group_id -> Int4,
         #[max_length = 255]
         name -> Varchar,
         #[max_length = 255]
@@ -87,7 +125,6 @@ diesel::table! {
 diesel::table! {
     group_label (id) {
         id -> Int4,
-        alert_group_id -> Int4,
         #[max_length = 255]
         name -> Varchar,
         #[max_length = 255]
@@ -95,17 +132,26 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(alert -> alert_group (alert_group_id));
-diesel::joinable!(alert_annotation -> alert (alert_id));
-diesel::joinable!(alert_label -> alert (alert_id));
-diesel::joinable!(common_annotation -> alert_group (alert_group_id));
-diesel::joinable!(common_label -> alert_group (alert_group_id));
-diesel::joinable!(group_label -> alert_group (alert_group_id));
+diesel::joinable!(alert_alert_annotations -> alert (alert_id));
+diesel::joinable!(alert_alert_annotations -> alert_annotation (alert_annotation_id));
+diesel::joinable!(alert_alert_labels -> alert (alert_id));
+diesel::joinable!(alert_alert_labels -> alert_label (alert_label_id));
+diesel::joinable!(alert_group_common_annotations -> alert_group (alert_group_id));
+diesel::joinable!(alert_group_common_annotations -> common_annotation (common_annotation_id));
+diesel::joinable!(alert_group_common_labels -> alert_group (alert_group_id));
+diesel::joinable!(alert_group_common_labels -> common_label (common_label_id));
+diesel::joinable!(alert_group_group_labels -> alert_group (alert_group_id));
+diesel::joinable!(alert_group_group_labels -> group_label (group_label_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     alert,
+    alert_alert_annotations,
+    alert_alert_labels,
     alert_annotation,
     alert_group,
+    alert_group_common_annotations,
+    alert_group_common_labels,
+    alert_group_group_labels,
     alert_label,
     common_annotation,
     common_label,

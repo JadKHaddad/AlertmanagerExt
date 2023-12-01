@@ -5,28 +5,32 @@ CREATE TABLE alert_group (
     group_key VARCHAR(255) NOT NULL,
     receiver VARCHAR(255) NOT NULL,
     status VARCHAR(10) CHECK(status IN ('resolved', 'firing')) NOT NULL,
-    external_url VARCHAR(255) NOT NULL
+    external_url VARCHAR(255) NOT NULL,
+    UNIQUE (group_key)
 );
 
 CREATE TABLE group_label (
     id INTEGER PRIMARY KEY,
     alert_group_id INTEGER NOT NULL references alert_group(id),
     name VARCHAR(255) NOT NULL,
-    value VARCHAR(255) NOT NULL
+    value VARCHAR(255) NOT NULL,
+    UNIQUE (name, value)
 );
 
 CREATE TABLE common_label (
     id INTEGER PRIMARY KEY,
     alert_group_id INTEGER NOT NULL references alert_group(id),
     name VARCHAR(255) NOT NULL,
-    value VARCHAR(255) NOT NULL
+    value VARCHAR(255) NOT NULL,
+    UNIQUE (name, value)
 );
 
 CREATE TABLE common_annotation (
     id INTEGER PRIMARY KEY,
     alert_group_id INTEGER NOT NULL references alert_group(id),
     name VARCHAR(255) NOT NULL,
-    value VARCHAR(255) NOT NULL
+    value VARCHAR(255) NOT NULL,
+    UNIQUE (name, value)
 );
 
 CREATE TABLE alert (
@@ -36,19 +40,22 @@ CREATE TABLE alert (
     starts_at TIMESTAMP NOT NULL,
     ends_at TIMESTAMP,
     generator_url VARCHAR(255) NOT NULL,
-    fingerprint VARCHAR(255) NOT NULL
+    fingerprint VARCHAR(255) NOT NULL,
+    UNIQUE (fingerprint)
 );
 
 CREATE TABLE alert_label (
     id INTEGER PRIMARY KEY,
     alert_id INTEGER NOT NULL references alert(id),
     name VARCHAR(255) NOT NULL,
-    value VARCHAR(255) NOT NULL
+    value VARCHAR(255) NOT NULL,
+    UNIQUE (name, value)
 );
 
 CREATE TABLE alert_annotation (
     id INTEGER PRIMARY KEY,
     alert_id INTEGER NOT NULL references alert(id),
     name VARCHAR(255) NOT NULL,
-    value VARCHAR(255) NOT NULL
+    value VARCHAR(255) NOT NULL,
+    UNIQUE (name, value)
 );

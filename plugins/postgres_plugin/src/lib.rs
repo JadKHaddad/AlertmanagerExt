@@ -1,7 +1,12 @@
 use crate::database::models::alert_status::AlertStatusModel;
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
-use diesel::{result::Error as DieselError, Connection, PgConnection};
+use diesel::OptionalExtension;
+use diesel::{
+    query_dsl::methods::{FilterDsl, SelectDsl},
+    result::Error as DieselError,
+    BoolExpressionMethods, Connection, ExpressionMethods, PgConnection,
+};
 use diesel_async::{
     pooled_connection::AsyncDieselConnectionManager, AsyncConnection, AsyncPgConnection,
     RunQueryDsl,
@@ -34,21 +39,27 @@ enum InternalPushError {
         #[source]
         error: DieselError,
     },
-    #[error("Error while inserting group labels: group_key: {group_key}, error: {error}")]
-    GroupLabelsInsertion {
+    #[error("Error while inserting group label: group_key: {group_key}, label_name: {label_name}, label_value: {label_value}, error: {error}")]
+    GroupLabelInsertion {
         group_key: String,
+        label_name: String,
+        label_value: String,
         #[source]
         error: DieselError,
     },
-    #[error("Error while inserting common labels: group_key: {group_key}, error: {error}")]
-    CommonLabelsInsertion {
+    #[error("Error while inserting common label: group_key: {group_key}, label_name: {label_name}, label_value: {label_value}, error: {error}")]
+    CommonLabelInsertion {
         group_key: String,
+        label_name: String,
+        label_value: String,
         #[source]
         error: DieselError,
     },
-    #[error("Error while inserting common annotations: group_key: {group_key}, error: {error}")]
-    CommonAnnotationsInsertion {
+    #[error("Error while inserting common annotation: group_key: {group_key}, annotation_name: {annotation_name}, annotation_value: {annotation_value}, error: {error}")]
+    CommonAnnotationInsertion {
         group_key: String,
+        annotation_name: String,
+        annotation_value: String,
         #[source]
         error: DieselError,
     },
@@ -75,17 +86,21 @@ enum InternalPushError {
         #[source]
         error: DieselError,
     },
-    #[error("Error while inserting alert labels: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}")]
-    AlertLabelsInsertion {
+    #[error("Error while inserting alert label: group_key: {group_key}, fingerprint: {fingerprint}, label_name: {label_name}, label_value: {label_value}, error: {error}")]
+    AlertLabelInsertion {
         group_key: String,
         fingerprint: String,
+        label_name: String,
+        label_value: String,
         #[source]
         error: DieselError,
     },
-    #[error("Error while inserting alert annotations: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}")]
-    AlertAnnotationsInsertion {
+    #[error("Error while inserting alert annotation: group_key: {group_key}, fingerprint: {fingerprint}, annotation_name: {annotation_name}, annotation_value: {annotation_value}, error: {error}")]
+    AlertAnnotationInsertion {
         group_key: String,
         fingerprint: String,
+        annotation_name: String,
+        annotation_value: String,
         #[source]
         error: DieselError,
     },
@@ -222,67 +237,200 @@ impl Push for PostgresPlugin {
                         error,
                     })?;
 
-                let group_labels = alertmanager_push
-                    .group_labels
-                    .iter()
-                    .map(|label| database::models::group::InsertableGroupLabel {
-                        alert_group_id,
-                        name: label.0,
-                        value: label.1,
-                    })
-                    .collect::<Vec<_>>();
-
                 tracing::trace!("Inserting group labels.");
-                diesel::insert_into(database::schema::group_label::table)
-                    .values(&group_labels)
-                    .execute(&mut conn)
-                    .await
-                    .map_err(|error| InternalPushError::GroupLabelsInsertion {
-                        group_key: alertmanager_push.group_key.clone(),
-                        error,
-                    })?;
+                for group_label in alertmanager_push.group_labels.iter() {
+                    let group_label = database::models::group::InsertableGroupLabel {
+                        name: group_label.0,
+                        value: group_label.1,
+                    };
 
-                let common_labels = alertmanager_push
-                    .common_labels
-                    .iter()
-                    .map(|label| database::models::group::InsertableCommonLabel {
-                        alert_group_id,
-                        name: label.0,
-                        value: label.1,
-                    })
-                    .collect::<Vec<_>>();
+                    let group_label_id_opt = database::schema::group_label::table
+                        .filter(
+                            database::schema::group_label::name
+                                .eq(&group_label.name)
+                                .and(database::schema::group_label::value.eq(&group_label.value)),
+                        )
+                        .select(database::schema::group_label::id)
+                        .get_result::<i32>(&mut conn)
+                        .await
+                        .optional()
+                        .map_err(|error| InternalPushError::GroupLabelInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            label_name: group_label.name.to_owned(),
+                            label_value: group_label.value.to_owned(),
+                            error,
+                        })?;
+
+                    let group_label_id = match group_label_id_opt {
+                        Some(group_label_id) => {
+                            tracing::trace!(
+                                name = %group_label.name,
+                                value = %group_label.value,
+                                "Group label already exists."
+                            );
+                            group_label_id
+                        }
+                        None => diesel::insert_into(database::schema::group_label::table)
+                            .values(&group_label)
+                            .returning(database::schema::group_label::id)
+                            .get_result::<i32>(&mut conn)
+                            .await
+                            .map_err(|error| InternalPushError::GroupLabelInsertion {
+                                group_key: alertmanager_push.group_key.clone(),
+                                label_name: group_label.name.to_owned(),
+                                label_value: group_label.value.to_owned(),
+                                error,
+                            })?,
+                    };
+
+                    let assign_group_label_to_group =
+                        database::models::group::AssignGroupLabelToGroup {
+                            alert_group_id,
+                            group_label_id,
+                        };
+
+                    diesel::insert_into(database::schema::alert_group_group_labels::table)
+                        .values(&assign_group_label_to_group)
+                        .execute(&mut conn)
+                        .await
+                        .map_err(|error| InternalPushError::GroupLabelInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            label_name: group_label.name.to_owned(),
+                            label_value: group_label.value.to_owned(),
+                            error,
+                        })?;
+                }
 
                 tracing::trace!("Inserting common labels.");
-                diesel::insert_into(database::schema::common_label::table)
-                    .values(&common_labels)
-                    .execute(&mut conn)
-                    .await
-                    .map_err(|error| InternalPushError::CommonLabelsInsertion {
-                        group_key: alertmanager_push.group_key.clone(),
-                        error,
-                    })?;
+                for common_label in alertmanager_push.common_labels.iter() {
+                    let common_label = database::models::group::InsertableCommonLabel {
+                        name: common_label.0,
+                        value: common_label.1,
+                    };
 
-                let common_annotations = alertmanager_push
-                    .common_annotations
-                    .iter()
-                    .map(
-                        |annotation| database::models::group::InsertableCommonAnnotation {
+                    let common_label_id_opt = database::schema::common_label::table
+                        .filter(
+                            database::schema::common_label::name
+                                .eq(&common_label.name)
+                                .and(database::schema::common_label::value.eq(&common_label.value)),
+                        )
+                        .select(database::schema::common_label::id)
+                        .get_result::<i32>(&mut conn)
+                        .await
+                        .optional()
+                        .map_err(|error| InternalPushError::CommonLabelInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            label_name: common_label.name.to_owned(),
+                            label_value: common_label.value.to_owned(),
+                            error,
+                        })?;
+
+                    let common_label_id = match common_label_id_opt {
+                        Some(common_label_id) => {
+                            tracing::trace!(
+                                name = %common_label.name,
+                                value = %common_label.value,
+                                "Common label already exists."
+                            );
+                            common_label_id
+                        }
+                        None => diesel::insert_into(database::schema::common_label::table)
+                            .values(&common_label)
+                            .returning(database::schema::common_label::id)
+                            .get_result::<i32>(&mut conn)
+                            .await
+                            .map_err(|error| InternalPushError::CommonLabelInsertion {
+                                group_key: alertmanager_push.group_key.clone(),
+                                label_name: common_label.name.to_owned(),
+                                label_value: common_label.value.to_owned(),
+                                error,
+                            })?,
+                    };
+
+                    let assign_common_label_to_group =
+                        database::models::group::AssignCommonLabelToGroup {
                             alert_group_id,
-                            name: annotation.0,
-                            value: annotation.1,
-                        },
-                    )
-                    .collect::<Vec<_>>();
+                            common_label_id,
+                        };
+
+                    diesel::insert_into(database::schema::alert_group_common_labels::table)
+                        .values(&assign_common_label_to_group)
+                        .execute(&mut conn)
+                        .await
+                        .map_err(|error| InternalPushError::CommonLabelInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            label_name: common_label.name.to_owned(),
+                            label_value: common_label.value.to_owned(),
+                            error,
+                        })?;
+                }
 
                 tracing::trace!("Inserting common annotations.");
-                diesel::insert_into(database::schema::common_annotation::table)
-                    .values(&common_annotations)
-                    .execute(&mut conn)
-                    .await
-                    .map_err(|error| InternalPushError::CommonAnnotationsInsertion {
-                        group_key: alertmanager_push.group_key.clone(),
-                        error,
-                    })?;
+                for common_annotation in alertmanager_push.common_annotations.iter() {
+                    let common_annotation = database::models::group::InsertableCommonAnnotation {
+                        name: common_annotation.0,
+                        value: common_annotation.1,
+                    };
+
+                    let common_annotation_id_opt = database::schema::common_annotation::table
+                        .filter(
+                            database::schema::common_annotation::name
+                                .eq(&common_annotation.name)
+                                .and(
+                                    database::schema::common_annotation::value
+                                        .eq(&common_annotation.value),
+                                ),
+                        )
+                        .select(database::schema::common_annotation::id)
+                        .get_result::<i32>(&mut conn)
+                        .await
+                        .optional()
+                        .map_err(|error| InternalPushError::CommonAnnotationInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            annotation_name: common_annotation.name.to_owned(),
+                            annotation_value: common_annotation.value.to_owned(),
+                            error,
+                        })?;
+
+                    let common_annotation_id = match common_annotation_id_opt {
+                        Some(common_annotation_id) => {
+                            tracing::trace!(
+                                name = %common_annotation.name,
+                                value = %common_annotation.value,
+                                "Common annotation already exists."
+                            );
+                            common_annotation_id
+                        }
+                        None => diesel::insert_into(database::schema::common_annotation::table)
+                            .values(&common_annotation)
+                            .returning(database::schema::common_annotation::id)
+                            .get_result::<i32>(&mut conn)
+                            .await
+                            .map_err(|error| InternalPushError::CommonAnnotationInsertion {
+                                group_key: alertmanager_push.group_key.clone(),
+                                annotation_name: common_annotation.name.to_owned(),
+                                annotation_value: common_annotation.value.to_owned(),
+                                error,
+                            })?,
+                    };
+
+                    let assign_common_annotation_to_group =
+                        database::models::group::AssignCommonAnnotationToGroup {
+                            alert_group_id,
+                            common_annotation_id,
+                        };
+
+                    diesel::insert_into(database::schema::alert_group_common_annotations::table)
+                        .values(&assign_common_annotation_to_group)
+                        .execute(&mut conn)
+                        .await
+                        .map_err(|error| InternalPushError::CommonAnnotationInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            annotation_name: common_annotation.name.to_owned(),
+                            annotation_value: common_annotation.value.to_owned(),
+                            error,
+                        })?;
+                }
 
                 tracing::trace!("Inserting alerts.");
                 for alert in alertmanager_push.alerts.iter() {
@@ -312,6 +460,7 @@ impl Push for PostgresPlugin {
 
                     let insertable_alert = database::models::alert::InsertableAlert {
                         alert_group_id,
+                        group_key: &alertmanager_push.group_key,
                         status: &AlertStatusModel::from(&alert.status),
                         starts_at,
                         ends_at,
@@ -330,49 +479,140 @@ impl Push for PostgresPlugin {
                             error,
                         })?;
 
-                    let labls = alert
-                        .labels
-                        .iter()
-                        .map(|label| database::models::alert::InsertableAlertLabel {
-                            alert_id,
+                    for label in alert.labels.iter() {
+                        let label = database::models::alert::InsertableAlertLabel {
                             name: label.0,
                             value: label.1,
-                        })
-                        .collect::<Vec<_>>();
+                        };
 
-                    tracing::trace!("Inserting alert labels.");
-                    diesel::insert_into(database::schema::alert_label::table)
-                        .values(&labls)
-                        .execute(&mut conn)
-                        .await
-                        .map_err(|error| InternalPushError::AlertLabelsInsertion {
-                            group_key: alertmanager_push.group_key.clone(),
-                            fingerprint: alert.fingerprint.clone(),
-                            error,
-                        })?;
+                        let alert_label_id_opt = database::schema::alert_label::table
+                            .filter(
+                                database::schema::alert_label::name
+                                    .eq(&label.name)
+                                    .and(database::schema::alert_label::value.eq(&label.value)),
+                            )
+                            .select(database::schema::alert_label::id)
+                            .get_result::<i32>(&mut conn)
+                            .await
+                            .optional()
+                            .map_err(|error| InternalPushError::AlertLabelInsertion {
+                                group_key: alertmanager_push.group_key.clone(),
+                                fingerprint: alert.fingerprint.clone(),
+                                label_name: label.name.to_owned(),
+                                label_value: label.value.to_owned(),
+                                error,
+                            })?;
 
-                    let annotations = alert
-                        .annotations
-                        .iter()
-                        .map(
-                            |annotation| database::models::alert::InsertableAlertAnnotation {
+                        let alert_label_id = match alert_label_id_opt {
+                            Some(alert_label_id) => {
+                                tracing::trace!(
+                                    name = %label.name,
+                                    value = %label.value,
+                                    "Alert label already exists."
+                                );
+                                alert_label_id
+                            }
+                            None => diesel::insert_into(database::schema::alert_label::table)
+                                .values(&label)
+                                .returning(database::schema::alert_label::id)
+                                .get_result::<i32>(&mut conn)
+                                .await
+                                .map_err(|error| InternalPushError::AlertLabelInsertion {
+                                    group_key: alertmanager_push.group_key.clone(),
+                                    fingerprint: alert.fingerprint.clone(),
+                                    label_name: label.name.to_owned(),
+                                    label_value: label.value.to_owned(),
+                                    error,
+                                })?,
+                        };
+
+                        let assign_alert_label_to_alert =
+                            database::models::alert::AssignAlertLabelToAlert {
                                 alert_id,
-                                name: annotation.0,
-                                value: annotation.1,
-                            },
-                        )
-                        .collect::<Vec<_>>();
+                                alert_label_id,
+                            };
 
-                    tracing::trace!("Inserting alert annotations.");
-                    diesel::insert_into(database::schema::alert_annotation::table)
-                        .values(&annotations)
-                        .execute(&mut conn)
-                        .await
-                        .map_err(|error| InternalPushError::AlertAnnotationsInsertion {
-                            group_key: alertmanager_push.group_key.clone(),
-                            fingerprint: alert.fingerprint.clone(),
-                            error,
-                        })?;
+                        diesel::insert_into(database::schema::alert_alert_labels::table)
+                            .values(&assign_alert_label_to_alert)
+                            .execute(&mut conn)
+                            .await
+                            .map_err(|error| InternalPushError::AlertLabelInsertion {
+                                group_key: alertmanager_push.group_key.clone(),
+                                fingerprint: alert.fingerprint.clone(),
+                                label_name: label.name.to_owned(),
+                                label_value: label.value.to_owned(),
+                                error,
+                            })?;
+                    }
+
+                    for annotation in alert.annotations.iter() {
+                        let annotation = database::models::alert::InsertableAlertAnnotation {
+                            name: annotation.0,
+                            value: annotation.1,
+                        };
+
+                        let alert_annotation_id_opt = database::schema::alert_annotation::table
+                            .filter(
+                                database::schema::alert_annotation::name
+                                    .eq(&annotation.name)
+                                    .and(
+                                        database::schema::alert_annotation::value
+                                            .eq(&annotation.value),
+                                    ),
+                            )
+                            .select(database::schema::alert_annotation::id)
+                            .get_result::<i32>(&mut conn)
+                            .await
+                            .optional()
+                            .map_err(|error| InternalPushError::AlertAnnotationInsertion {
+                                group_key: alertmanager_push.group_key.clone(),
+                                fingerprint: alert.fingerprint.clone(),
+                                annotation_name: annotation.name.to_owned(),
+                                annotation_value: annotation.value.to_owned(),
+                                error,
+                            })?;
+
+                        let alert_annotation_id = match alert_annotation_id_opt {
+                            Some(alert_annotation_id) => {
+                                tracing::trace!(
+                                    name = %annotation.name,
+                                    value = %annotation.value,
+                                    "Alert annotation already exists."
+                                );
+                                alert_annotation_id
+                            }
+                            None => diesel::insert_into(database::schema::alert_annotation::table)
+                                .values(&annotation)
+                                .returning(database::schema::alert_annotation::id)
+                                .get_result::<i32>(&mut conn)
+                                .await
+                                .map_err(|error| InternalPushError::AlertAnnotationInsertion {
+                                    group_key: alertmanager_push.group_key.clone(),
+                                    fingerprint: alert.fingerprint.clone(),
+                                    annotation_name: annotation.name.to_owned(),
+                                    annotation_value: annotation.value.to_owned(),
+                                    error,
+                                })?,
+                        };
+
+                        let assign_alert_annotation_to_alert =
+                            database::models::alert::AssignAlertAnnotationToAlert {
+                                alert_id,
+                                alert_annotation_id,
+                            };
+
+                        diesel::insert_into(database::schema::alert_alert_annotations::table)
+                            .values(&assign_alert_annotation_to_alert)
+                            .execute(&mut conn)
+                            .await
+                            .map_err(|error| InternalPushError::AlertAnnotationInsertion {
+                                group_key: alertmanager_push.group_key.clone(),
+                                fingerprint: alert.fingerprint.clone(),
+                                annotation_name: annotation.name.to_owned(),
+                                annotation_value: annotation.value.to_owned(),
+                                error,
+                            })?;
+                    }
                 }
 
                 tracing::trace!("Committing transaction.");
