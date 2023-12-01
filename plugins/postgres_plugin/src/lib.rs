@@ -93,6 +93,32 @@ impl PostgresPlugin {
         Ok(alert_group_id)
     }
 
+    async fn assign_group_label(
+        conn: &mut AsyncPgConnection,
+        alert_group_id: i32,
+        group_label_id: i32,
+        group_label: &database::models::group::InsertableGroupLabel<'_>,
+        alertmanager_push: &AlertmanagerPush,
+    ) -> Result<(), InternalPushError> {
+        let assign_group_label_to_group = database::models::group::AssignGroupLabel {
+            alert_group_id,
+            group_label_id,
+        };
+
+        diesel::insert_into(database::schema::assign_group_label::table)
+            .values(&assign_group_label_to_group)
+            .execute(conn)
+            .await
+            .map_err(|error| InternalPushError::GroupLabelAssignment {
+                group_key: alertmanager_push.group_key.clone(),
+                label_name: group_label.name.to_owned(),
+                label_value: group_label.value.to_owned(),
+                error,
+            })?;
+
+        Ok(())
+    }
+
     async fn insert_group_lables(
         conn: &mut AsyncPgConnection,
         alert_group_id: i32,
@@ -143,22 +169,41 @@ impl PostgresPlugin {
                     })?,
             };
 
-            let assign_group_label_to_group = database::models::group::AssignGroupLabel {
+            Self::assign_group_label(
+                conn,
                 alert_group_id,
                 group_label_id,
-            };
-
-            diesel::insert_into(database::schema::assign_group_label::table)
-                .values(&assign_group_label_to_group)
-                .execute(conn)
-                .await
-                .map_err(|error| InternalPushError::GroupLabelAssignment {
-                    group_key: alertmanager_push.group_key.clone(),
-                    label_name: group_label.name.to_owned(),
-                    label_value: group_label.value.to_owned(),
-                    error,
-                })?;
+                &group_label,
+                alertmanager_push,
+            )
+            .await?;
         }
+
+        Ok(())
+    }
+
+    async fn assign_common_label(
+        conn: &mut AsyncPgConnection,
+        alert_group_id: i32,
+        common_label_id: i32,
+        common_label: &database::models::group::InsertableCommonLabel<'_>,
+        alertmanager_push: &AlertmanagerPush,
+    ) -> Result<(), InternalPushError> {
+        let assign_common_label_to_group = database::models::group::AssignCommonLabel {
+            alert_group_id,
+            common_label_id,
+        };
+
+        diesel::insert_into(database::schema::assign_common_label::table)
+            .values(&assign_common_label_to_group)
+            .execute(conn)
+            .await
+            .map_err(|error| InternalPushError::CommonLabelAssignment {
+                group_key: alertmanager_push.group_key.clone(),
+                label_name: common_label.name.to_owned(),
+                label_value: common_label.value.to_owned(),
+                error,
+            })?;
 
         Ok(())
     }
@@ -213,22 +258,41 @@ impl PostgresPlugin {
                     })?,
             };
 
-            let assign_common_label_to_group = database::models::group::AssignCommonLabel {
+            Self::assign_common_label(
+                conn,
                 alert_group_id,
                 common_label_id,
-            };
-
-            diesel::insert_into(database::schema::assign_common_label::table)
-                .values(&assign_common_label_to_group)
-                .execute(conn)
-                .await
-                .map_err(|error| InternalPushError::CommonLabelAssignment {
-                    group_key: alertmanager_push.group_key.clone(),
-                    label_name: common_label.name.to_owned(),
-                    label_value: common_label.value.to_owned(),
-                    error,
-                })?;
+                &common_label,
+                alertmanager_push,
+            )
+            .await?;
         }
+
+        Ok(())
+    }
+
+    async fn assign_common_annotation(
+        conn: &mut AsyncPgConnection,
+        alert_group_id: i32,
+        common_annotation_id: i32,
+        common_annotation: &database::models::group::InsertableCommonAnnotation<'_>,
+        alertmanager_push: &AlertmanagerPush,
+    ) -> Result<(), InternalPushError> {
+        let assign_common_annotation_to_group = database::models::group::AssignCommonAnnotation {
+            alert_group_id,
+            common_annotation_id,
+        };
+
+        diesel::insert_into(database::schema::assign_common_annotation::table)
+            .values(&assign_common_annotation_to_group)
+            .execute(conn)
+            .await
+            .map_err(|error| InternalPushError::CommonAnnotationAssignment {
+                group_key: alertmanager_push.group_key.clone(),
+                annotation_name: common_annotation.name.to_owned(),
+                annotation_value: common_annotation.value.to_owned(),
+                error,
+            })?;
 
         Ok(())
     }
@@ -285,22 +349,14 @@ impl PostgresPlugin {
                     })?,
             };
 
-            let assign_common_annotation_to_group =
-                database::models::group::AssignCommonAnnotation {
-                    alert_group_id,
-                    common_annotation_id,
-                };
-
-            diesel::insert_into(database::schema::assign_common_annotation::table)
-                .values(&assign_common_annotation_to_group)
-                .execute(conn)
-                .await
-                .map_err(|error| InternalPushError::CommonAnnotationAssignment {
-                    group_key: alertmanager_push.group_key.clone(),
-                    annotation_name: common_annotation.name.to_owned(),
-                    annotation_value: common_annotation.value.to_owned(),
-                    error,
-                })?;
+            Self::assign_common_annotation(
+                conn,
+                alert_group_id,
+                common_annotation_id,
+                &common_annotation,
+                alertmanager_push,
+            )
+            .await?;
         }
 
         Ok(())
@@ -360,6 +416,34 @@ impl PostgresPlugin {
         Ok(alert_id)
     }
 
+    async fn assign_alert_label(
+        conn: &mut AsyncPgConnection,
+        alert_id: i32,
+        alert_label_id: i32,
+        alert_label: &database::models::alert::InsertableAlertLabel<'_>,
+        alert: &Alert,
+        alertmanager_push: &AlertmanagerPush,
+    ) -> Result<(), InternalPushError> {
+        let assign_alert_label_to_alert = database::models::alert::AssignAlertLabel {
+            alert_id,
+            alert_label_id,
+        };
+
+        diesel::insert_into(database::schema::assign_alert_label::table)
+            .values(&assign_alert_label_to_alert)
+            .execute(conn)
+            .await
+            .map_err(|error| InternalPushError::AlertLabelAssignment {
+                group_key: alertmanager_push.group_key.clone(),
+                fingerprint: alert.fingerprint.clone(),
+                label_name: alert_label.name.to_owned(),
+                label_value: alert_label.value.to_owned(),
+                error,
+            })?;
+
+        Ok(())
+    }
+
     async fn insert_alert_labels(
         conn: &mut AsyncPgConnection,
         alert_id: i32,
@@ -413,23 +497,44 @@ impl PostgresPlugin {
                     })?,
             };
 
-            let assign_alert_label_to_alert = database::models::alert::AssignAlertLabel {
+            Self::assign_alert_label(
+                conn,
                 alert_id,
                 alert_label_id,
-            };
-
-            diesel::insert_into(database::schema::assign_alert_label::table)
-                .values(&assign_alert_label_to_alert)
-                .execute(conn)
-                .await
-                .map_err(|error| InternalPushError::AlertLabelAssignment {
-                    group_key: alertmanager_push.group_key.clone(),
-                    fingerprint: alert.fingerprint.clone(),
-                    label_name: label.name.to_owned(),
-                    label_value: label.value.to_owned(),
-                    error,
-                })?;
+                &label,
+                alert,
+                alertmanager_push,
+            )
+            .await?;
         }
+
+        Ok(())
+    }
+
+    async fn assign_alert_annotation(
+        conn: &mut AsyncPgConnection,
+        alert_id: i32,
+        alert_annotation_id: i32,
+        alert_annotation: &database::models::alert::InsertableAlertAnnotation<'_>,
+        alert: &Alert,
+        alertmanager_push: &AlertmanagerPush,
+    ) -> Result<(), InternalPushError> {
+        let assign_alert_annotation_to_alert = database::models::alert::AssignAlertAnnotation {
+            alert_id,
+            alert_annotation_id,
+        };
+
+        diesel::insert_into(database::schema::assign_alert_annotation::table)
+            .values(&assign_alert_annotation_to_alert)
+            .execute(conn)
+            .await
+            .map_err(|error| InternalPushError::AlertAnnotationAssignment {
+                group_key: alertmanager_push.group_key.clone(),
+                fingerprint: alert.fingerprint.clone(),
+                annotation_name: alert_annotation.name.to_owned(),
+                annotation_value: alert_annotation.value.to_owned(),
+                error,
+            })?;
 
         Ok(())
     }
@@ -487,22 +592,15 @@ impl PostgresPlugin {
                     })?,
             };
 
-            let assign_alert_annotation_to_alert = database::models::alert::AssignAlertAnnotation {
+            Self::assign_alert_annotation(
+                conn,
                 alert_id,
                 alert_annotation_id,
-            };
-
-            diesel::insert_into(database::schema::assign_alert_annotation::table)
-                .values(&assign_alert_annotation_to_alert)
-                .execute(conn)
-                .await
-                .map_err(|error| InternalPushError::AlertAnnotationAssignment {
-                    group_key: alertmanager_push.group_key.clone(),
-                    fingerprint: alert.fingerprint.clone(),
-                    annotation_name: annotation.name.to_owned(),
-                    annotation_value: annotation.value.to_owned(),
-                    error,
-                })?;
+                &annotation,
+                alert,
+                alertmanager_push,
+            )
+            .await?;
         }
 
         Ok(())
