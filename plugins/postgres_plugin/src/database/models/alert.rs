@@ -1,6 +1,6 @@
 use super::alert_status::AlertStatusModel;
 use crate::database::schema::{
-    alert, alert_alert_annotations, alert_alert_labels, alert_annotation, alert_label,
+    alert, alert_annotation, alert_label, assign_alert_annotation, assign_alert_label,
 };
 use diesel::Insertable;
 
@@ -26,9 +26,9 @@ pub struct InsertableAlertLabel<'a> {
 }
 
 #[derive(Insertable)]
-#[diesel(table_name = alert_alert_labels)]
+#[diesel(table_name = assign_alert_label)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct AssignAlertLabelToAlert {
+pub struct AssignAlertLabel {
     pub alert_id: i32,
     pub alert_label_id: i32,
 }
@@ -42,9 +42,9 @@ pub struct InsertableAlertAnnotation<'a> {
 }
 
 #[derive(Insertable)]
-#[diesel(table_name = alert_alert_annotations)]
+#[diesel(table_name = assign_alert_annotation)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct AssignAlertAnnotationToAlert {
+pub struct AssignAlertAnnotation {
     pub alert_id: i32,
     pub alert_annotation_id: i32,
 }

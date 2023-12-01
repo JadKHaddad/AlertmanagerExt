@@ -22,7 +22,7 @@ CREATE TABLE
     );
 
 CREATE TABLE
-    alert_group_group_labels (
+    assign_group_label (
         id SERIAL PRIMARY KEY,
         alert_group_id INTEGER NOT NULL references alert_group(id),
         group_label_id INTEGER NOT NULL references group_label(id)
@@ -37,7 +37,7 @@ CREATE TABLE
     );
 
 CREATE TABLE
-    alert_group_common_labels (
+    assign_common_label(
         id SERIAL PRIMARY KEY,
         alert_group_id INTEGER NOT NULL references alert_group(id),
         common_label_id INTEGER NOT NULL references common_label(id)
@@ -52,7 +52,7 @@ CREATE TABLE
     );
 
 CREATE TABLE
-    alert_group_common_annotations (
+    assign_common_annotation (
         id SERIAL PRIMARY KEY,
         alert_group_id INTEGER NOT NULL references alert_group(id),
         common_annotation_id INTEGER NOT NULL references common_annotation(id)
@@ -80,7 +80,7 @@ CREATE TABLE
     );
 
 CREATE TABLE
-    alert_alert_labels (
+    assign_alert_label (
         id SERIAL PRIMARY KEY,
         alert_id INTEGER NOT NULL references alert(id),
         alert_label_id INTEGER NOT NULL references alert_label(id)
@@ -95,7 +95,7 @@ CREATE TABLE
     );
 
 CREATE TABLE
-    alert_alert_annotations (
+    assign_alert_annotation (
         id SERIAL PRIMARY KEY,
         alert_id INTEGER NOT NULL references alert(id),
         alert_annotation_id INTEGER NOT NULL references alert_annotation(id)

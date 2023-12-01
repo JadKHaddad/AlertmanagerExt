@@ -8,7 +8,7 @@ use utoipa::ToSchema;
 /// Alertmanager webhook payload
 ///
 /// https://prometheus.io/docs/alerting/latest/configuration/#webhook_config.
-pub struct AlermanagerPush {
+pub struct AlertmanagerPush {
     pub version: String,
     /// key identifying the group of alerts (e.g. to deduplicate)
     pub group_key: String,

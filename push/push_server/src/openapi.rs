@@ -15,7 +15,7 @@ use utoipa::{
         crate::routes::push::push,
     ),
     components(schemas(
-        models::AlermanagerPush,
+        models::AlertmanagerPush,
         models::Status,
         models::Alert,
         crate::error_response::ErrorResponse,

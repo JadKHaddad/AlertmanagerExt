@@ -5,7 +5,7 @@ use crate::{
     traits::{HasStatusCode, PushAndPlugin}, routes::utils,
 };
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
-use models::AlermanagerPush;
+use models::AlertmanagerPush;
 use schemars::JsonSchema;
 use serde::Serialize;
 use std::sync::Arc;
@@ -91,7 +91,7 @@ impl IntoResponse for PushResponse {
 /// Helper function
 async fn match_plugin_push(
     plugin: &Arc<dyn PushAndPlugin>,
-    alertmanager_push: &AlermanagerPush,
+    alertmanager_push: &AlertmanagerPush,
 ) -> PluginPushResponse {
     match plugin.push_alert(alertmanager_push).await {
         Ok(_) => PluginPushResponse {
@@ -126,7 +126,7 @@ struct PluginPushResponseJoinHandle {
 async fn push_async(
     state: &ApiState,
     affected_plugins: Vec<&Arc<dyn PushAndPlugin>>,
-    alertmanager_push: &AlermanagerPush,
+    alertmanager_push: &AlertmanagerPush,
 ) -> PushResponse {
     if affected_plugins.is_empty() {
         return PushResponse {
@@ -215,7 +215,7 @@ async fn push_async(
 pub async fn push(
     State(state): State<ApiState>,
     ApiQuery(filter_query): ApiQuery<PluginFilterQuery>,
-    ApiJson(alertmanager_push): ApiJson<AlermanagerPush>,
+    ApiJson(alertmanager_push): ApiJson<AlertmanagerPush>,
 ) -> PushResponse {
     tracing::trace!("Pushing alerts to plugins.");
 

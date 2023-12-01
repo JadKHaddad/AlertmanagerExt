@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use models::AlermanagerPush;
+use models::AlertmanagerPush;
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
@@ -19,5 +19,5 @@ pub trait Push: Send + Sync + 'static {
     /// Initialize on startup
     async fn initialize(&mut self) -> Result<(), InitializeError>;
 
-    async fn push_alert(&self, alertmanager_push: &AlermanagerPush) -> Result<(), PushError>;
+    async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError>;
 }

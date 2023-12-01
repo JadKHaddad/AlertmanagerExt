@@ -1,7 +1,7 @@
 use super::alert_status::AlertStatusModel;
 use crate::database::schema::{
-    alert_group, alert_group_common_annotations, alert_group_common_labels,
-    alert_group_group_labels, common_annotation, common_label, group_label,
+    alert_group, assign_common_annotation, assign_common_label, assign_group_label,
+    common_annotation, common_label, group_label,
 };
 use diesel::Insertable;
 
@@ -24,9 +24,9 @@ pub struct InsertableGroupLabel<'a> {
 }
 
 #[derive(Insertable)]
-#[diesel(table_name = alert_group_group_labels)]
+#[diesel(table_name = assign_group_label)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct AssignGroupLabelToGroup {
+pub struct AssignGroupLabel {
     pub alert_group_id: i32,
     pub group_label_id: i32,
 }
@@ -40,9 +40,9 @@ pub struct InsertableCommonLabel<'a> {
 }
 
 #[derive(Insertable)]
-#[diesel(table_name = alert_group_common_labels)]
+#[diesel(table_name = assign_common_label)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct AssignCommonLabelToGroup {
+pub struct AssignCommonLabel {
     pub alert_group_id: i32,
     pub common_label_id: i32,
 }
@@ -56,9 +56,9 @@ pub struct InsertableCommonAnnotation<'a> {
 }
 
 #[derive(Insertable)]
-#[diesel(table_name = alert_group_common_annotations)]
+#[diesel(table_name = assign_common_annotation)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct AssignCommonAnnotationToGroup {
+pub struct AssignCommonAnnotation {
     pub alert_group_id: i32,
     pub common_annotation_id: i32,
 }

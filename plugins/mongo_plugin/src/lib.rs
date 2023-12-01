@@ -7,7 +7,7 @@ use database::models::{
         InsertableGroupLabel,
     },
 };
-use models::AlermanagerPush;
+use models::AlertmanagerPush;
 use mongodb::{
     bson::doc, error::Error as MongoError, options::ClientOptions, Client, Collection, Database,
 };
@@ -220,7 +220,7 @@ impl Push for MongoPlugin {
     }
 
     #[tracing::instrument(name = "push_alert", skip_all, fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
-    async fn push_alert(&self, alertmanager_push: &AlermanagerPush) -> Result<(), PushError> {
+    async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
 
         let mut session = self
