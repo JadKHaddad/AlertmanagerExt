@@ -9,3 +9,5 @@ edition = "2021"
 schemars = { workspace = true }
 serde = { workspace = true }
 utoipa = { workspace = true }
+rand = { workspace = true }
+chrono = { workspace = true }
