@@ -11,6 +11,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fmt::Debug;
 
+/// A Wrapper around [`axum::extract::Path`] that rejects with an [`ErrorResponse`]
 pub struct ApiPath<T>(pub T);
 
 #[async_trait]
@@ -26,11 +27,11 @@ where
         let path = AxumPath::<T>::from_request_parts(parts, _state).await;
         match path {
             Ok(path) => {
-                tracing::trace!(path=?path.0, "Path extracted");
+                tracing::trace!(path=?path.0, "Extracted");
                 Ok(ApiPath(path.0))
             }
             Err(path_rejection) => {
-                tracing::trace!("Path rejection");
+                tracing::debug!(rejection=?path_rejection, "Rejection");
 
                 let reason = path_rejection.body_text();
                 let status_code = path_rejection.status();
@@ -47,6 +48,7 @@ where
     }
 }
 
+/// A Wrapper around [`axum::extract::Json`] that rejects with an [`ErrorResponse`]
 pub struct ApiJson<T>(pub T);
 
 #[async_trait]
@@ -66,11 +68,11 @@ where
 
         match json {
             Ok(json) => {
-                tracing::trace!(json=?json.0, "Json extracted");
+                tracing::trace!(json=?json.0, "Extracted");
                 Ok(ApiJson(json.0))
             }
             Err(json_rejection) => {
-                tracing::trace!("Json rejection");
+                tracing::debug!(rejection=?json_rejection, "Rejection");
 
                 let reason = json_rejection.body_text();
                 let status_code = json_rejection.status();

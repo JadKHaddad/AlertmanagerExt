@@ -11,19 +11,19 @@ pub struct HealthError {
 #[derive(Debug)]
 /// Meta information about the plugin
 ///
-/// See [`OwnedPluginMeta`]
+/// See [`OwnedPluginMeta`].
 pub struct PluginMeta<'a> {
     /// Name of the plugin
     ///
-    /// Used to identify the plugin among others of the same type
+    /// Used to identify the plugin among others of the same type.
     pub name: &'a str,
     /// Type of plugin
     ///
-    /// Used to identify the plugin
+    /// Used to identify the plugin.
     pub type_: &'static str,
     /// Group of the plugin
     ///
-    /// Multiple plugins can be grouped together
+    /// Multiple plugins can be grouped together.
     pub group: &'a str,
 }
 

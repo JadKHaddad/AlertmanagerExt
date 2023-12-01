@@ -27,8 +27,8 @@ pub enum PushStatus {
     Failed,
     /// No plugins were found
     ///
-    /// If pushed to a group, this means that the group is empty
-    /// If pushed to all plugins, this means that there are no plugins
+    /// If pushed to a group, this means that the group is empty.
+    /// If pushed to all plugins, this means that there are no plugins.
     NoPlugins,
 }
 
@@ -103,7 +103,8 @@ impl IntoResponse for PushResponse {
 
 /// Helper function
 ///
-/// Avoids duplicate code in [`push`], [`push_grouped`] ([`push_async`]) and [`push_named`]
+/// Avoids duplicate code in [`push`], [`push_grouped`], [`push_grouped_exclusive`], [`push_named_exclusive`] ([`push_async`]) and [`push_named`].
+/// Matches a plugin push, logs errors and returns a [`PluginPushResponse`] with the appropriate status.
 async fn match_plugin_push(
     plugin: &Arc<dyn PushAndPlugin>,
     alertmanager_push: &AlermanagerPush,
@@ -127,17 +128,19 @@ async fn match_plugin_push(
 
 /// Helper struct
 ///
-/// Join handle for a plugin push response
+/// Join handle for a plugin push response.
+/// Uses [`OwnedPluginMeta`] to avoid lifetime issues.
 struct PluginPushResponseJoinHandle {
     /// Join handle
     join_handle: JoinHandle<PluginPushResponse>,
-    /// in case the join handle panics or is cancelled, we still want to know which plugin it was
+    /// In case the join handle panics or is cancelled, we still want to know which plugin it was
     plugin_meta: OwnedPluginMeta,
 }
 
 /// Helper function
 ///
-/// Pushes alerts asynchronously
+/// Pushes alerts asynchronously.
+/// Uses [`HasPushAndPluginArcRef`], a helper trait.
 async fn push_async<A: HasPushAndPluginArcRef>(
     state: &ApiState,
     affected_plugins: &Vec<A>,
@@ -251,6 +254,62 @@ pub async fn push_grouped(
         .plugins
         .iter()
         .filter(|p| p.group() == plugin_group)
+        .collect();
+
+    push_async(&state, &affected_plugins, &alertmanager_push).await
+}
+
+/// Push alerts to all plugins asynchronously, excluding plugins in a group
+#[utoipa::path(post, path = "/push_grouped_exclusive/{plugin_group}", tag = "push",
+    params(
+        ("plugin_group" = String, Path, description = "Name of the plugin group to exclude.")
+    ),
+    request_body = AlermanagerPush, responses(
+    (status = 200, description = "Push was successful.", body = [PushResponse]),
+    (status = 207, description = "Some pushes were successful.", body = [PushResponse]),
+    (status = 500, description = "Push failed.", body = [PushResponse]),
+    (status = 404, description = "No plugins were found.", body = [PushResponse])
+))]
+#[tracing::instrument(name = "push_grouped_exclusive", skip_all, fields(group_key = alertmanager_push.group_key))]
+pub async fn push_grouped_exclusive(
+    State(state): State<ApiState>,
+    ApiPath(plugin_group): ApiPath<String>,
+    ApiJson(alertmanager_push): ApiJson<AlermanagerPush>,
+) -> PushResponse {
+    tracing::trace!("Pushing alerts to plugins.");
+
+    let affected_plugins: Vec<&Arc<dyn PushAndPlugin>> = state
+        .plugins
+        .iter()
+        .filter(|p| p.group() != plugin_group)
+        .collect();
+
+    push_async(&state, &affected_plugins, &alertmanager_push).await
+}
+
+/// Push alerts to all plugins asynchronously, excluding a specific plugin
+#[utoipa::path(post, path = "/push_named_exclusive/{plugin_name}", tag = "push",
+    params(
+        ("plugin_name" = String, Path, description = "Name of the plugin to exclude.")
+    ),
+    request_body = AlermanagerPush, responses(
+    (status = 200, description = "Push was successful.", body = [PushResponse]),
+    (status = 207, description = "Some pushes were successful.", body = [PushResponse]),
+    (status = 500, description = "Push failed.", body = [PushResponse]),
+    (status = 404, description = "No plugins were found.", body = [PushResponse])
+))]
+#[tracing::instrument(name = "push_named_exclusive", skip_all, fields(group_key = alertmanager_push.group_key))]
+pub async fn push_named_exclusive(
+    State(state): State<ApiState>,
+    ApiPath(plugin_name): ApiPath<String>,
+    ApiJson(alertmanager_push): ApiJson<AlermanagerPush>,
+) -> PushResponse {
+    tracing::trace!("Pushing alerts to plugins.");
+
+    let affected_plugins: Vec<&Arc<dyn PushAndPlugin>> = state
+        .plugins
+        .iter()
+        .filter(|p| p.name() != plugin_name)
         .collect();
 
     push_async(&state, &affected_plugins, &alertmanager_push).await

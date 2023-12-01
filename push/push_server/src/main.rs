@@ -31,7 +31,7 @@ async fn main() -> AnyResult<()> {
     if std::env::var_os("RUST_LOG").is_none() {
         std::env::set_var(
             "RUST_LOG",
-            "push_server=trace,postgres_plugin=trace,tower_http=trace",
+            "push_server=trace,push_server::extractors=off,postgres_plugin=trace,tower_http=trace",
         );
     }
 
@@ -90,6 +90,14 @@ async fn main() -> AnyResult<()> {
         .route(
             "/push_grouped/:plugin_group",
             post(push_server::routes::push::push_grouped),
+        )
+        .route(
+            "/push_grouped_exclusive/:plugin_group",
+            post(push_server::routes::push::push_grouped_exclusive),
+        )
+        .route(
+            "/push_named_exclusive/:plugin_name",
+            post(push_server::routes::push::push_named_exclusive),
         )
         .route(
             "/push_named/:plugin_name",

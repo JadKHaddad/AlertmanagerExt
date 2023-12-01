@@ -130,7 +130,7 @@ pub struct MongoPluginMeta {
 
 /// Mongo plugin
 ///
-/// Based on [`mongodb`]
+/// Based on [`mongodb`].
 pub struct MongoPlugin {
     meta: MongoPluginMeta,
     config: Option<Box<MongoPluginConfig>>,

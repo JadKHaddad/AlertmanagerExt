@@ -15,6 +15,8 @@ use utoipa::{
         crate::routes::health::health_named,
         crate::routes::push::push,
         crate::routes::push::push_grouped,
+        crate::routes::push::push_grouped_exclusive,
+        crate::routes::push::push_named_exclusive,
         crate::routes::push::push_named
     ),
     components(schemas(
