@@ -1,4 +1,4 @@
-use plugins_definitions::{OwnedPluginMeta, PluginMeta};
+use plugins_definitions::PluginMeta;
 use prometheus_client::{
     encoding::{text, EncodeLabelSet},
     metrics::{counter::Counter, family::Family},
@@ -9,22 +9,16 @@ use std::fmt::Error as FmtError;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, EncodeLabelSet)]
 pub struct PushLabel {
     pub plugin_name: String,
-    pub plugin_type: &'static str,
+    pub plugin_type: String,
     pub plugin_group: String,
 }
 
 impl<'a> From<PluginMeta<'a>> for PushLabel {
     fn from(plugin_meta: PluginMeta) -> Self {
-        Self::from(OwnedPluginMeta::from(plugin_meta))
-    }
-}
-
-impl From<OwnedPluginMeta> for PushLabel {
-    fn from(plugin_meta: OwnedPluginMeta) -> Self {
         Self {
-            plugin_name: plugin_meta.name,
-            plugin_type: plugin_meta.type_,
-            plugin_group: plugin_meta.group,
+            plugin_name: plugin_meta.name.to_owned(),
+            plugin_type: plugin_meta.type_.to_owned(),
+            plugin_group: plugin_meta.group.to_owned(),
         }
     }
 }

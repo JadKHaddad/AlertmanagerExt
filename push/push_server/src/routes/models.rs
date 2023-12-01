@@ -1,7 +1,7 @@
-use plugins_definitions::{OwnedPluginMeta, PluginMeta};
+use plugins_definitions::PluginMeta;
 use schemars::JsonSchema;
-use serde::Serialize;
-use utoipa::ToSchema;
+use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 #[derive(Debug, Clone, Serialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -9,37 +9,33 @@ use utoipa::ToSchema;
 pub struct PluginResponseMeta {
     /// Name of the plugin
     pub plugin_name: String,
-    /// Type of the plugin, if found
-    pub plugin_type: Option<&'static str>,
-    /// Group of the plugin, if found
-    pub plugin_group: Option<String>,
-}
-
-impl PluginResponseMeta {
-    /// Helper function
-    ///
-    /// Creates a [`PluginResponseMeta`] for a plugin that was not found
-    pub fn not_found(plugin_name: String) -> Self {
-        Self {
-            plugin_name,
-            plugin_type: None,
-            plugin_group: None,
-        }
-    }
+    /// Type of the plugin
+    pub plugin_type: String,
+    /// Group of the plugin
+    pub plugin_group: String,
 }
 
 impl<'a> From<PluginMeta<'a>> for PluginResponseMeta {
     fn from(plugin_meta: PluginMeta) -> Self {
-        Self::from(OwnedPluginMeta::from(plugin_meta))
+        Self {
+            plugin_name: plugin_meta.name.to_owned(),
+            plugin_type: plugin_meta.type_.to_owned(),
+            plugin_group: plugin_meta.group.to_owned(),
+        }
     }
 }
 
-impl From<OwnedPluginMeta> for PluginResponseMeta {
-    fn from(plugin_meta: OwnedPluginMeta) -> Self {
-        Self {
-            plugin_name: plugin_meta.name,
-            plugin_type: Some(plugin_meta.type_),
-            plugin_group: Some(plugin_meta.group),
-        }
-    }
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, IntoParams, ToSchema)]
+#[serde(rename_all = "camelCase")]
+/// Query filter for plugins
+///
+/// This is used to filter plugins by name, group or type.
+/// If none of the fields are specified, all plugins are assumed.
+pub struct PluginFilterQuery {
+    /// Name of the plugin
+    pub name: Option<String>,
+    /// Group of the plugin
+    pub group: Option<String>,
+    /// Type of the plugin
+    pub type_: Option<String>,
 }

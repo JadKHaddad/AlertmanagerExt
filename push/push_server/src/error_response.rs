@@ -28,6 +28,8 @@ impl ErrorResponse {
 pub enum ErrorResponseType {
     /// Payload is invalid
     PayloadInvalid(PayloadInvalid),
+    /// Query is invalid
+    QueryInvalid(QueryInvalid),
     /// Path is invalid
     PathInvalid(PathInvalid),
     /// Internal server error
@@ -40,11 +42,20 @@ pub enum ErrorResponseType {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
+pub struct QueryInvalid {
+    #[serde(skip)]
+    pub(crate) status_code: StatusCode,
+    pub(crate) reason: String,
+    pub(crate) expected_query_schema: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct PayloadInvalid {
     #[serde(skip)]
     pub(crate) status_code: StatusCode,
     pub(crate) reason: String,
-    pub(crate) expected_schema: String,
+    pub(crate) expected_payload_schema: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
@@ -78,6 +89,7 @@ impl HasStatusCode for ErrorResponseType {
     fn status_code(&self) -> StatusCode {
         match self {
             ErrorResponseType::PayloadInvalid(payload_invalid) => payload_invalid.status_code,
+            ErrorResponseType::QueryInvalid(query_invalid) => query_invalid.status_code,
             ErrorResponseType::PathInvalid(path_invalid) => path_invalid.status_code,
             ErrorResponseType::InternalServerError { .. } => StatusCode::INTERNAL_SERVER_ERROR,
             ErrorResponseType::NotFound => StatusCode::NOT_FOUND,

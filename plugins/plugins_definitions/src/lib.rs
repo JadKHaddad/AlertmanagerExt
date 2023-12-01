@@ -8,10 +8,8 @@ pub struct HealthError {
     pub reason: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Meta information about the plugin
-///
-/// See [`OwnedPluginMeta`].
 pub struct PluginMeta<'a> {
     /// Name of the plugin
     ///
@@ -20,40 +18,17 @@ pub struct PluginMeta<'a> {
     /// Type of plugin
     ///
     /// Used to identify the plugin.
-    pub type_: &'static str,
+    pub type_: &'a str,
     /// Group of the plugin
     ///
     /// Multiple plugins can be grouped together.
     pub group: &'a str,
 }
 
-#[derive(Debug, Clone)]
-/// Owned version of [`PluginMeta`]
-pub struct OwnedPluginMeta {
-    pub name: String,
-    pub type_: &'static str,
-    pub group: String,
-}
-
-impl From<PluginMeta<'_>> for OwnedPluginMeta {
-    fn from(meta: PluginMeta) -> Self {
-        Self {
-            name: meta.name.to_owned(),
-            type_: meta.type_,
-            group: meta.group.to_owned(),
-        }
-    }
-}
-
 #[async_trait]
 pub trait Plugin: Send + Sync + 'static {
     /// Meta information about the plugin
     fn meta(&self) -> PluginMeta;
-
-    /// Owned meta information about the plugin
-    fn meta_owned(&self) -> OwnedPluginMeta {
-        self.meta().into()
-    }
 
     /// Name of the plugin
     fn name(&self) -> &str {

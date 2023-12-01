@@ -1,12 +1,16 @@
+use crate::extractors::ApiQuery;
 use crate::routes::models::PluginResponseMeta;
+use crate::routes::utils;
+use crate::state::ApiState;
 use crate::traits::{HasStatusCode, PushAndPlugin};
-use crate::{extractors::ApiPath, state::ApiState};
 use axum::extract::State;
 use axum::{http::StatusCode, response::IntoResponse, Json};
 use schemars::JsonSchema;
 use serde::Serialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
+
+use super::models::PluginFilterQuery;
 
 #[derive(Clone, Debug, Serialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -25,9 +29,14 @@ impl IntoResponse for ServerHealthResponse {
 }
 
 /// Health check for the server
-#[utoipa::path(get, path = "/health", tag = "health", responses(
-    (status = 200, description = "Server is healthy.", body = [ServerHealthResponse])
-))]
+#[utoipa::path(
+    get, 
+    path = "/health", 
+    tag = "health", 
+    responses(
+        (status = 200, description = "Server is healthy.", body = ServerHealthResponse)
+    )
+)]
 pub async fn health() -> ServerHealthResponse {
     ServerHealthResponse {}
 }
@@ -42,17 +51,17 @@ pub enum HealthStatus {
     Partial,
     /// All plugins are unhealthy
     Unhealthy,
+    /// No plugins were found
+    NoPlugins,
 }
 
-#[derive(Debug, Clone, Serialize, JsonSchema, PartialEq, ToSchema)]
+#[derive(Debug, Clone, Serialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "type", content = "content")]
 /// Plugin health status
 pub enum PluginHealthStatus {
     /// Plugin is healthy
     Healthy,
-    /// Plugin was not found
-    NotFound,
     /// Plugin is unhealthy
     Unhealthy {
         /// Reason why plugin is unhealthy
@@ -73,15 +82,8 @@ impl HasStatusCode for PlugingHealthResponse {
     fn status_code(&self) -> StatusCode {
         match self.status {
             PluginHealthStatus::Healthy => StatusCode::OK,
-            PluginHealthStatus::NotFound => StatusCode::NOT_FOUND,
             PluginHealthStatus::Unhealthy { .. } => StatusCode::SERVICE_UNAVAILABLE,
         }
-    }
-}
-
-impl IntoResponse for PlugingHealthResponse {
-    fn into_response(self) -> axum::response::Response {
-        (self.status_code(), Json(self)).into_response()
     }
 }
 
@@ -100,6 +102,7 @@ impl HasStatusCode for PluginsHealthResponse {
             HealthStatus::Healthy => StatusCode::OK,
             HealthStatus::Partial => StatusCode::MULTI_STATUS,
             HealthStatus::Unhealthy => StatusCode::SERVICE_UNAVAILABLE,
+            HealthStatus::NoPlugins => StatusCode::NOT_FOUND,
         }
     }
 }
@@ -110,7 +113,7 @@ impl IntoResponse for PluginsHealthResponse {
     }
 }
 
-/// Avoids duplicate code in health_all and health_named
+/// Helper function
 async fn match_plugin_health(plugin: &Arc<dyn PushAndPlugin>) -> PlugingHealthResponse {
     match plugin.health().await {
         Ok(_) => PlugingHealthResponse {
@@ -129,20 +132,41 @@ async fn match_plugin_health(plugin: &Arc<dyn PushAndPlugin>) -> PlugingHealthRe
     }
 }
 
-/// Health check for all plugins
-#[utoipa::path(get, path = "/health_all", tag = "health", responses(
-    (status = 200, description = "All plugins are healthy.", body = [PluginsHealthResponse]),
-    (status = 207, description = "Some plugins are unhealthy.", body = [PluginsHealthResponse]),
-    (status = 503, description = "All plugins are unhealthy.", body = [PluginsHealthResponse]),
-))]
-#[tracing::instrument(name = "health_all", skip_all)]
-pub async fn health_all(State(state): State<ApiState>) -> PluginsHealthResponse {
-    tracing::trace!("Health check for all plugins");
+/// Health check for plugins
+#[utoipa::path(
+    get, 
+    path = "/plugin_health", 
+    tag = "health", 
+    params(
+        PluginFilterQuery
+    ),
+    responses(
+        (status = 200, description = "All affected plugins are healthy.", body = PluginsHealthResponse),
+        (status = 207, description = "Some affected plugins are unhealthy.", body = PluginsHealthResponse),
+        (status = 503, description = "All affected plugins are unhealthy.", body = PluginsHealthResponse),
+        (status = 404, description = "No plugins were found.", body = PluginsHealthResponse)
+    )
+)]
+#[tracing::instrument(name = "plugin_health", skip_all)]
+pub async fn plugin_health(
+    State(state): State<ApiState>,
+    ApiQuery(filter_query): ApiQuery<PluginFilterQuery>,
+) -> PluginsHealthResponse {
+    tracing::trace!("Health check for plugins");
 
     let mut plugin_health_responses = vec![];
     let mut healthy_plugins_count: usize = 0;
 
-    for plugin in state.plugins.iter() {
+    let affected_plugins = utils::filter_plugins(&state.plugins, &filter_query);
+
+    if affected_plugins.is_empty() {
+        return PluginsHealthResponse {
+            status: HealthStatus::NoPlugins,
+            plugin_health_responses: vec![],
+        };
+    }
+
+    for plugin in affected_plugins.iter() {
         let res = match_plugin_health(plugin).await;
         if let PluginHealthStatus::Healthy = res.status {
             healthy_plugins_count += 1;
@@ -152,38 +176,12 @@ pub async fn health_all(State(state): State<ApiState>) -> PluginsHealthResponse 
 
     let status = match healthy_plugins_count {
         0 => HealthStatus::Unhealthy,
-        n if n == state.plugins.len() => HealthStatus::Healthy,
+        n if n == affected_plugins.len() => HealthStatus::Healthy,
         _ => HealthStatus::Partial,
     };
 
     PluginsHealthResponse {
         status,
         plugin_health_responses,
-    }
-}
-
-/// Health check for a specific plugin
-#[utoipa::path(get, path = "/health_named/{plugin_name}", tag = "health",
-    params(
-        ("plugin_name" = String, Path, description = "Name of the plugin to check.")
-    ),
-    responses(
-        (status = 200, description = "Plugin is healthy.", body = [PlugingHealthResponse]),
-        (status = 404, description = "Plugin was not found.", body = [PlugingHealthResponse]),
-        (status = 503, description = "Plugin is unhealthy.", body = [PlugingHealthResponse])
-))]
-#[tracing::instrument(name = "health_named", skip_all)]
-pub async fn health_named(
-    State(state): State<ApiState>,
-    ApiPath(plugin_name): ApiPath<String>,
-) -> PlugingHealthResponse {
-    tracing::trace!(plugin_name = plugin_name, "Health check for plugin.");
-    let plugin = state.plugins.iter().find(|p| p.name() == plugin_name);
-    match plugin {
-        Some(plugin) => match_plugin_health(plugin).await,
-        None => PlugingHealthResponse {
-            status: PluginHealthStatus::NotFound,
-            plugin_meta: PluginResponseMeta::not_found(plugin_name),
-        },
     }
 }
