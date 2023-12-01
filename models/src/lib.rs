@@ -7,7 +7,7 @@ use utoipa::ToSchema;
 #[serde(rename_all = "camelCase")]
 /// Alertmanager webhook payload
 ///
-/// https://prometheus.io/docs/alerting/latest/configuration/#webhook_config.
+/// https://prometheus.io/docs/alerting/latest/configuration/#webhook_config
 pub struct AlertmanagerPush {
     pub version: String,
     /// key identifying the group of alerts (e.g. to deduplicate)

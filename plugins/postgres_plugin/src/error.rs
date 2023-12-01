@@ -1,3 +1,4 @@
+use chrono::ParseError as ChronoParseError;
 use diesel::result::Error as DieselError;
 use thiserror::Error as ThisError;
 
@@ -93,7 +94,7 @@ pub enum InternalPushError {
         fingerprint: String,
         got_starts_at: String,
         #[source]
-        error: chrono::ParseError,
+        error: ChronoParseError,
     },
     #[error("Error parsing ends_at. group_key: {group_key}, fingerprint: {fingerprint}, got_ends_at: {got_ends_at}, error: {error}")]
     EndsAtParsing {
@@ -101,7 +102,7 @@ pub enum InternalPushError {
         fingerprint: String,
         got_ends_at: String,
         #[source]
-        error: chrono::ParseError,
+        error: ChronoParseError,
     },
     #[error(
         "Error inserting alert. group_key: {group_key}, fingerprint: {fingerprint}, error: {error}"
