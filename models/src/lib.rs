@@ -1,6 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use utoipa::ToSchema;
 
 pub mod utils;
@@ -18,9 +18,9 @@ pub struct AlertmanagerPush {
     pub truncated_alerts: i32,
     pub status: Status,
     pub receiver: String,
-    pub group_labels: HashMap<String, String>,
-    pub common_labels: HashMap<String, String>,
-    pub common_annotations: HashMap<String, String>,
+    pub group_labels: BTreeMap<String, String>,
+    pub common_labels: BTreeMap<String, String>,
+    pub common_annotations: BTreeMap<String, String>,
     /// backlink to the Alertmanager.
     #[serde(rename = "externalURL")]
     pub external_url: String,
@@ -38,8 +38,8 @@ pub enum Status {
 #[serde(rename_all = "camelCase")]
 pub struct Alert {
     pub status: Status,
-    pub labels: HashMap<String, String>,
-    pub annotations: HashMap<String, String>,
+    pub labels: BTreeMap<String, String>,
+    pub annotations: BTreeMap<String, String>,
     /// rfc3339
     pub starts_at: String,
     /// rfc3339

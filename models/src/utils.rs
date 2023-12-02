@@ -1,7 +1,7 @@
 use crate::{Alert, AlertmanagerPush, Status};
 use chrono::Utc;
 use rand::{distributions::Alphanumeric, Rng};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 fn generate_random_string() -> String {
     rand::thread_rng()
@@ -11,8 +11,8 @@ fn generate_random_string() -> String {
         .collect()
 }
 
-fn generate_random_hashmap() -> HashMap<String, String> {
-    let mut map = HashMap::new();
+fn generate_random_btreemap() -> BTreeMap<String, String> {
+    let mut map = BTreeMap::new();
     let count = rand::thread_rng().gen_range(1..=5);
 
     for _ in 0..count {
@@ -36,8 +36,8 @@ fn generate_random_alert() -> Alert {
         } else {
             Status::Firing
         },
-        labels: generate_random_hashmap(),
-        annotations: generate_random_hashmap(),
+        labels: generate_random_btreemap(),
+        annotations: generate_random_btreemap(),
         starts_at: generate_random_timestamp(),
         ends_at: generate_random_timestamp(),
         generator_url: generate_random_string(),
@@ -56,9 +56,9 @@ fn generate_random_alertmanager_push() -> AlertmanagerPush {
             Status::Firing
         },
         receiver: generate_random_string(),
-        group_labels: generate_random_hashmap(),
-        common_labels: generate_random_hashmap(),
-        common_annotations: generate_random_hashmap(),
+        group_labels: generate_random_btreemap(),
+        common_labels: generate_random_btreemap(),
+        common_annotations: generate_random_btreemap(),
         external_url: generate_random_string(),
         alerts: vec![generate_random_alert(); rand::thread_rng().gen_range(1..=5)],
     }
