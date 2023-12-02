@@ -176,29 +176,29 @@ impl PostgresPlugin {
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
         for label in alertmanager_push.group_labels.iter() {
-            let lable = InsertableLabel {
+            let label = InsertableLabel {
                 name: label.0,
                 value: label.1,
             };
 
-            let label_id = Self::insert_label(conn, &lable)
+            let label_id = Self::insert_label(conn, &label)
                 .await
                 .map_err(|error| match error {
                     LablelInsertionError::Get(error) => InternalPushError::GroupLabelId {
                         group_key: alertmanager_push.group_key.clone(),
-                        label_name: lable.name.to_owned(),
-                        label_value: lable.value.to_owned(),
+                        label_name: label.name.to_owned(),
+                        label_value: label.value.to_owned(),
                         error,
                     },
                     LablelInsertionError::Insert(error) => InternalPushError::GroupLabelInsertion {
                         group_key: alertmanager_push.group_key.clone(),
-                        label_name: lable.name.to_owned(),
-                        label_value: lable.value.to_owned(),
+                        label_name: label.name.to_owned(),
+                        label_value: label.value.to_owned(),
                         error,
                     },
                 })?;
 
-            Self::assign_group_label(conn, group_id, label_id, &lable, alertmanager_push).await?;
+            Self::assign_group_label(conn, group_id, label_id, &label, alertmanager_push).await?;
         }
 
         Ok(())
@@ -599,12 +599,11 @@ impl PostgresPlugin {
 
     async fn insert_alerts(
         conn: &mut AsyncPgConnection,
-        alert_group_id: i32,
+        group_id: i32,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
         for alert in alertmanager_push.alerts.iter() {
-            let alert_id =
-                Self::insert_alert(conn, alert_group_id, alertmanager_push, alert).await?;
+            let alert_id = Self::insert_alert(conn, group_id, alertmanager_push, alert).await?;
             Self::insert_alert_labels(conn, alert_id, alertmanager_push, alert).await?;
             Self::insert_alert_annotations(conn, alert_id, alertmanager_push, alert).await?;
         }
@@ -682,11 +681,11 @@ impl Push for PostgresPlugin {
             async move {
                 tracing::trace!("Starting transaction.");
 
-                let alert_group_id = Self::insert_group(conn, alertmanager_push).await?;
-                Self::insert_group_lables(conn, alert_group_id, alertmanager_push).await?;
-                Self::insert_common_labels(conn, alert_group_id, alertmanager_push).await?;
-                Self::insert_common_annotations(conn, alert_group_id, alertmanager_push).await?;
-                Self::insert_alerts(conn, alert_group_id, alertmanager_push).await?;
+                let group_id = Self::insert_group(conn, alertmanager_push).await?;
+                Self::insert_group_lables(conn, group_id, alertmanager_push).await?;
+                Self::insert_common_labels(conn, group_id, alertmanager_push).await?;
+                Self::insert_common_annotations(conn, group_id, alertmanager_push).await?;
+                Self::insert_alerts(conn, group_id, alertmanager_push).await?;
 
                 tracing::trace!("Committing transaction.");
 
@@ -760,5 +759,48 @@ impl PostgresPlugin {
             .collect();
 
         Ok(database_alerts)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use models::utils::generate_random_alertmanager_pushes;
+    use tracing_test::traced_test;
+
+    async fn create_and_init_plugin() -> PostgresPlugin {
+        let postgres_plugin_config = PostgresPluginConfig {
+            connection_string: String::from("postgres://user:password@localhost:5432/database"),
+            max_connections: 15,
+            connection_timeout: std::time::Duration::from_secs(5),
+        };
+
+        let postgres_plugin_meta = PostgresPluginMeta {
+            name: String::from("postgres_plugin_1"),
+            group: String::from("default"),
+        };
+
+        let mut postgres_plugin = PostgresPlugin::new(postgres_plugin_meta, postgres_plugin_config)
+            .await
+            .expect("Failed to create Postgres plugin.");
+
+        postgres_plugin
+            .initialize()
+            .await
+            .expect("Failed to initialize Postgres plugin.");
+
+        postgres_plugin
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn insert_random_pushes() {
+        let plugin = create_and_init_plugin().await;
+        let pushes = generate_random_alertmanager_pushes(100);
+        for push in pushes.iter() {
+            if let Err(error) = plugin.push_alert(push).await {
+                eprintln!("Failed to push alert: {:?}", error)
+            }
+        }
     }
 }

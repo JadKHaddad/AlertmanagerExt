@@ -3,7 +3,7 @@ use crate::database::models::{annotations::Annotation, labels::Label};
 use crate::database::schema::{alerts, alerts_annotations, alerts_labels};
 use diesel::prelude::*;
 
-#[derive(Insertable)]
+#[derive(Insertable, Debug)]
 #[diesel(table_name = alerts)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct InsertableAlert<'a> {

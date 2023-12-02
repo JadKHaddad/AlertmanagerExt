@@ -6,9 +6,13 @@ use std::collections::BTreeMap;
 fn generate_random_string() -> String {
     rand::thread_rng()
         .sample_iter(&Alphanumeric)
-        .take(10)
+        .take(25)
         .map(char::from)
         .collect()
+}
+
+fn generate_uuid() -> String {
+    uuid::Uuid::new_v4().to_string()
 }
 
 fn generate_random_btreemap() -> BTreeMap<String, String> {
@@ -29,7 +33,7 @@ fn generate_random_timestamp() -> String {
     random_timestamp.to_rfc3339()
 }
 
-fn generate_random_alert() -> Alert {
+fn generate_random_alert(n: usize) -> Alert {
     Alert {
         status: if rand::random() {
             Status::Resolved
@@ -41,14 +45,15 @@ fn generate_random_alert() -> Alert {
         starts_at: generate_random_timestamp(),
         ends_at: generate_random_timestamp(),
         generator_url: generate_random_string(),
-        fingerprint: generate_random_string(),
+        fingerprint: format!("{n}-{}", generate_uuid()),
     }
 }
 
-fn generate_random_alertmanager_push() -> AlertmanagerPush {
+fn generate_random_alertmanager_push(n: usize) -> AlertmanagerPush {
+    let count = rand::thread_rng().gen_range(1..=5);
     AlertmanagerPush {
         version: generate_random_string(),
-        group_key: generate_random_string(),
+        group_key: format!("{n}-{}", generate_uuid()),
         truncated_alerts: rand::thread_rng().gen(),
         status: if rand::random() {
             Status::Resolved
@@ -60,14 +65,12 @@ fn generate_random_alertmanager_push() -> AlertmanagerPush {
         common_labels: generate_random_btreemap(),
         common_annotations: generate_random_btreemap(),
         external_url: generate_random_string(),
-        alerts: vec![generate_random_alert(); rand::thread_rng().gen_range(1..=5)],
+        alerts: (0..count).map(generate_random_alert).collect(),
     }
 }
 
 pub fn generate_random_alertmanager_pushes(n: usize) -> Vec<AlertmanagerPush> {
-    (0..n)
-        .map(|_| generate_random_alertmanager_push())
-        .collect()
+    (0..n).map(generate_random_alertmanager_push).collect()
 }
 
 #[cfg(test)]

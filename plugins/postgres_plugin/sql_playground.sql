@@ -1,3 +1,7 @@
+-- alerts with their labels and annotations
+
+-- just how the enter the database
+
 SELECT *
 FROM (
         SELECT
