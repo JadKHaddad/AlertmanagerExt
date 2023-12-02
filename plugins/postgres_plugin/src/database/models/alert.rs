@@ -2,7 +2,7 @@ use super::alert_status::AlertStatusModel;
 use crate::database::schema::{
     alert, alert_annotation, alert_label, assign_alert_annotation, assign_alert_label,
 };
-use diesel::{Insertable, Queryable, Selectable};
+use diesel::prelude::*;
 
 #[derive(Insertable)]
 #[diesel(table_name = alert)]
@@ -20,7 +20,7 @@ pub struct InsertableAlert<'a> {
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = alert)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct SelectableAlert {
+pub struct Alert {
     pub group_key: String,
     pub status: AlertStatusModel,
     pub starts_at: chrono::NaiveDateTime,
@@ -40,7 +40,7 @@ pub struct InsertableAlertLabel<'a> {
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = alert_label)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct SelectableAlertLabel {
+pub struct AlertLabel {
     pub name: String,
     pub value: String,
 }
@@ -48,7 +48,18 @@ pub struct SelectableAlertLabel {
 #[derive(Insertable)]
 #[diesel(table_name = assign_alert_label)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct InsertableAssignAlertLabel {
+    pub alert_id: i32,
+    pub alert_label_id: i32,
+}
+
+#[derive(Identifiable, Selectable, Queryable, Associations, Debug, Clone)]
+#[diesel(belongs_to(Alert))]
+#[diesel(belongs_to(AlertLabel))]
+#[diesel(table_name = assign_alert_label)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct AssignAlertLabel {
+    pub id: i32,
     pub alert_id: i32,
     pub alert_label_id: i32,
 }
@@ -64,7 +75,7 @@ pub struct InsertableAlertAnnotation<'a> {
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = alert_annotation)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct SelectableAlertAnnotation {
+pub struct AlertAnnotation {
     pub name: String,
     pub value: String,
 }
@@ -79,23 +90,17 @@ pub struct AssignAlertAnnotation {
 
 #[derive(Queryable)]
 pub struct DatabaseAlert {
-    pub selectable_alert: SelectableAlert,
-    pub selectable_alert_labels: Vec<SelectableAlertLabel>,
-    pub selectable_alert_annotations: Vec<SelectableAlertAnnotation>,
+    pub selectable_alert: Alert,
+    pub selectable_alert_labels: Vec<AlertLabel>,
+    pub selectable_alert_annotations: Vec<AlertAnnotation>,
 }
 
-impl
-    From<(
-        SelectableAlert,
-        Vec<SelectableAlertLabel>,
-        Vec<SelectableAlertAnnotation>,
-    )> for DatabaseAlert
-{
+impl From<(Alert, Vec<AlertLabel>, Vec<AlertAnnotation>)> for DatabaseAlert {
     fn from(
         (selectable_alert, selectable_alert_labels, selectable_alert_annotations): (
-            SelectableAlert,
-            Vec<SelectableAlertLabel>,
-            Vec<SelectableAlertAnnotation>,
+            Alert,
+            Vec<AlertLabel>,
+            Vec<AlertAnnotation>,
         ),
     ) -> Self {
         Self {

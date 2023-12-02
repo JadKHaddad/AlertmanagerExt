@@ -1,11 +1,11 @@
-use crate::database::models::alert::{SelectableAlertAnnotation, SelectableAlertLabel};
-use crate::database::models::{alert::SelectableAlert, alert_status::AlertStatusModel};
+use crate::database::models::alert::AssignAlertLabel;
+use crate::database::models::alert_status::AlertStatusModel;
 use crate::error::InternalPushError;
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
 use database::models::alert::DatabaseAlert;
 use diesel::{BoolExpressionMethods, Connection, ExpressionMethods, PgConnection};
-use diesel::{OptionalExtension, QueryDsl, SelectableHelper};
+use diesel::{OptionalExtension, QueryDsl};
 use diesel_async::{
     pooled_connection::AsyncDieselConnectionManager, AsyncConnection, AsyncPgConnection,
     RunQueryDsl,
@@ -426,7 +426,7 @@ impl PostgresPlugin {
         alert: &Alert,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
-        let assign_alert_label_to_alert = database::models::alert::AssignAlertLabel {
+        let assign_alert_label_to_alert = database::models::alert::InsertableAssignAlertLabel {
             alert_id,
             alert_label_id,
         };
@@ -715,11 +715,27 @@ impl Push for PostgresPlugin {
     }
 }
 
+use diesel::prelude::*;
 use diesel::result::Error as DieselError;
 impl PostgresPlugin {
     async fn get_all_alerts(
         conn: &mut AsyncPgConnection,
     ) -> Result<Vec<DatabaseAlert>, DieselError> {
+        let all_alerts = database::schema::alert::table
+            .clone()
+            .select(database::models::alert::Alert::as_select())
+            .load(conn)
+            .await?;
+
+        let assigned_labels = AssignAlertLabel::belonging_to(&all_alerts)
+            .inner_join(database::schema::alert_label::table)
+            .select((
+                database::models::alert::AssignAlertLabel::as_select(),
+                database::models::alert::AlertLabel::as_select(),
+            ))
+            .load(conn)
+            .await?;
+
         todo!()
     }
 }
