@@ -1,9 +1,9 @@
-use crate::database::models::alert::AssignAlertLabel;
 use crate::database::models::alert_status::AlertStatusModel;
+use crate::database::models::alerts::AssignAlertLabel;
 use crate::error::InternalPushError;
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
-use database::models::alert::DatabaseAlert;
+use database::models::alerts::DatabaseAlert;
 use diesel::{BoolExpressionMethods, Connection, ExpressionMethods, PgConnection};
 use diesel::{OptionalExtension, QueryDsl};
 use diesel_async::{
@@ -75,7 +75,7 @@ impl PostgresPlugin {
         conn: &mut AsyncPgConnection,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<i32, InternalPushError> {
-        let alert_group = database::models::group::InsertableAlertGroup {
+        let alert_group = database::models::groups::InsertableAlertGroup {
             receiver: &alertmanager_push.receiver,
             status: &AlertStatusModel::from(&alertmanager_push.status),
             external_url: &alertmanager_push.external_url,
@@ -99,10 +99,10 @@ impl PostgresPlugin {
         conn: &mut AsyncPgConnection,
         alert_group_id: i32,
         group_label_id: i32,
-        group_label: &database::models::group::InsertableGroupLabel<'_>,
+        group_label: &database::models::groups::InsertableGroupLabel<'_>,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
-        let assign_group_label_to_group = database::models::group::AssignGroupLabel {
+        let assign_group_label_to_group = database::models::groups::AssignGroupLabel {
             alert_group_id,
             group_label_id,
         };
@@ -127,7 +127,7 @@ impl PostgresPlugin {
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
         for group_label in alertmanager_push.group_labels.iter() {
-            let group_label = database::models::group::InsertableGroupLabel {
+            let group_label = database::models::groups::InsertableGroupLabel {
                 name: group_label.0,
                 value: group_label.1,
             };
@@ -188,10 +188,10 @@ impl PostgresPlugin {
         conn: &mut AsyncPgConnection,
         alert_group_id: i32,
         common_label_id: i32,
-        common_label: &database::models::group::InsertableCommonLabel<'_>,
+        common_label: &database::models::groups::InsertableCommonLabel<'_>,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
-        let assign_common_label_to_group = database::models::group::AssignCommonLabel {
+        let assign_common_label_to_group = database::models::groups::AssignCommonLabel {
             alert_group_id,
             common_label_id,
         };
@@ -216,7 +216,7 @@ impl PostgresPlugin {
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
         for common_label in alertmanager_push.common_labels.iter() {
-            let common_label = database::models::group::InsertableCommonLabel {
+            let common_label = database::models::groups::InsertableCommonLabel {
                 name: common_label.0,
                 value: common_label.1,
             };
@@ -277,10 +277,10 @@ impl PostgresPlugin {
         conn: &mut AsyncPgConnection,
         alert_group_id: i32,
         common_annotation_id: i32,
-        common_annotation: &database::models::group::InsertableCommonAnnotation<'_>,
+        common_annotation: &database::models::groups::InsertableCommonAnnotation<'_>,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
-        let assign_common_annotation_to_group = database::models::group::AssignCommonAnnotation {
+        let assign_common_annotation_to_group = database::models::groups::AssignCommonAnnotation {
             alert_group_id,
             common_annotation_id,
         };
@@ -305,7 +305,7 @@ impl PostgresPlugin {
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
         for common_annotation in alertmanager_push.common_annotations.iter() {
-            let common_annotation = database::models::group::InsertableCommonAnnotation {
+            let common_annotation = database::models::groups::InsertableCommonAnnotation {
                 name: common_annotation.0,
                 value: common_annotation.1,
             };
@@ -394,7 +394,7 @@ impl PostgresPlugin {
             None
         };
 
-        let insertable_alert = database::models::alert::InsertableAlert {
+        let insertable_alert = database::models::alerts::InsertableAlert {
             alert_group_id,
             group_key: &alertmanager_push.group_key,
             status: &AlertStatusModel::from(&alert.status),
@@ -422,11 +422,11 @@ impl PostgresPlugin {
         conn: &mut AsyncPgConnection,
         alert_id: i32,
         alert_label_id: i32,
-        alert_label: &database::models::alert::InsertableAlertLabel<'_>,
+        alert_label: &database::models::alerts::InsertableAlertLabel<'_>,
         alert: &Alert,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
-        let assign_alert_label_to_alert = database::models::alert::InsertableAssignAlertLabel {
+        let assign_alert_label_to_alert = database::models::alerts::InsertableAssignAlertLabel {
             alert_id,
             alert_label_id,
         };
@@ -453,7 +453,7 @@ impl PostgresPlugin {
         alert: &Alert,
     ) -> Result<(), InternalPushError> {
         for label in alert.labels.iter() {
-            let label = database::models::alert::InsertableAlertLabel {
+            let label = database::models::alerts::InsertableAlertLabel {
                 name: label.0,
                 value: label.1,
             };
@@ -517,11 +517,11 @@ impl PostgresPlugin {
         conn: &mut AsyncPgConnection,
         alert_id: i32,
         alert_annotation_id: i32,
-        alert_annotation: &database::models::alert::InsertableAlertAnnotation<'_>,
+        alert_annotation: &database::models::alerts::InsertableAlertAnnotation<'_>,
         alert: &Alert,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
-        let assign_alert_annotation_to_alert = database::models::alert::AssignAlertAnnotation {
+        let assign_alert_annotation_to_alert = database::models::alerts::AssignAlertAnnotation {
             alert_id,
             alert_annotation_id,
         };
@@ -548,7 +548,7 @@ impl PostgresPlugin {
         alert: &Alert,
     ) -> Result<(), InternalPushError> {
         for annotation in alert.annotations.iter() {
-            let annotation = database::models::alert::InsertableAlertAnnotation {
+            let annotation = database::models::alerts::InsertableAlertAnnotation {
                 name: annotation.0,
                 value: annotation.1,
             };
@@ -721,20 +721,20 @@ impl PostgresPlugin {
     async fn get_all_alerts(
         conn: &mut AsyncPgConnection,
     ) -> Result<Vec<DatabaseAlert>, DieselError> {
-        let all_alerts = database::schema::alert::table
-            .clone()
-            .select(database::models::alert::Alert::as_select())
-            .load(conn)
-            .await?;
+        // let all_alerts = database::schema::alert::table
+        //     .clone()
+        //     .select(database::models::alerts::Alert::as_select())
+        //     .load(conn)
+        //     .await?;
 
-        let assigned_labels = AssignAlertLabel::belonging_to(&all_alerts)
-            .inner_join(database::schema::alert_label::table)
-            .select((
-                database::models::alert::AssignAlertLabel::as_select(),
-                database::models::alert::AlertLabel::as_select(),
-            ))
-            .load(conn)
-            .await?;
+        // let assigned_labels = AssignAlertLabel::belonging_to(&all_alerts)
+        //     .inner_join(database::schema::alert_label::table)
+        //     .select((
+        //         database::models::alerts::AssignAlertLabel::as_select(),
+        //         database::models::alerts::AlertLabel::as_select(),
+        //     ))
+        //     .load(conn)
+        //     .await?;
 
         todo!()
     }
