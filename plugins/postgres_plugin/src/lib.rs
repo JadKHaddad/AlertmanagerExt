@@ -47,8 +47,11 @@ pub struct PostgresPluginMeta {
 ///
 /// Based on [`diesel`], [`diesel_async`] and [`bb8`].
 pub struct PostgresPlugin {
+    /// Meta information for the plugin
     meta: PostgresPluginMeta,
+    /// Configuration for the plugin
     config: Option<Box<PostgresPluginConfig>>,
+    /// Connection pool
     pool: Pool,
 }
 

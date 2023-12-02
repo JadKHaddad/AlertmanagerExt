@@ -10,6 +10,7 @@ push_definitions = { path = "../../push/push_definitions" }
 plugins_definitions = { path = "../plugins_definitions" }
 models = { path = "../../models" }
 chrono = { workspace = true }
+diesel_migrations = "2.1.0"
 diesel = { version = "2.1.2", features = [
     "sqlite",
     "chrono",
@@ -19,3 +20,8 @@ diesel = { version = "2.1.2", features = [
 deadpool-diesel = { version = "0.5.0", features = ["sqlite"] }
 # because of reasons.. bundled
 rusqlite = { version = "0.29.0", features = ["bundled"] }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }

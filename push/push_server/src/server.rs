@@ -10,6 +10,7 @@ use axum::{
 };
 use postgres_plugin::{PostgresPlugin, PostgresPluginConfig, PostgresPluginMeta};
 use push_definitions::Push;
+use sqlite_plugin::{SqlitePlugin, SqlitePluginConfig, SqlitePluginMeta};
 use std::{net::SocketAddr, sync::Arc};
 use tower::ServiceBuilder;
 use tower_http::{
@@ -47,9 +48,27 @@ pub async fn run() -> AnyResult<()> {
         .await
         .context("Failed to initialize Postgres plugin.")?;
 
+    let sqlite_plugin_config = SqlitePluginConfig {
+        database_url: String::from("file:push/push_server/db/sqlite.db"),
+    };
+
+    let sqlite_plugin_meta = SqlitePluginMeta {
+        name: String::from("sqlite_plugin_1"),
+        group: String::from("default"),
+    };
+
+    let mut sqlite_plugin = SqlitePlugin::new(sqlite_plugin_meta, sqlite_plugin_config)
+        .context("Failed to create SQLite plugin.")?;
+
+    sqlite_plugin
+        .initialize()
+        .await
+        .context("Failed to initialize SQLite plugin.")?;
+
     // Plugins are initialized before they are added to the state.
     // Well because of Arc.
-    let plugins: Vec<Arc<dyn PushAndPlugin>> = vec![Arc::new(postgres_plugin)];
+    let plugins: Vec<Arc<dyn PushAndPlugin>> =
+        vec![Arc::new(postgres_plugin), Arc::new(sqlite_plugin)];
 
     let state = ApiState::new(plugins);
 

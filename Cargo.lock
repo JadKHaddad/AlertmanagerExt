@@ -2046,13 +2046,19 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 name = "sqlite_plugin"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-trait",
  "chrono",
  "deadpool-diesel",
  "diesel",
+ "diesel_migrations",
  "models",
  "plugins_definitions",
  "push_definitions",
  "rusqlite",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
