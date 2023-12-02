@@ -2,7 +2,7 @@ use crate::database::models::alert_status::AlertStatusModel;
 use crate::database::models::alerts::{Alert, AlertAnnotation, AlertLabel};
 use crate::database::models::annotations::Annotation;
 use crate::database::models::labels::Label;
-use crate::error::InternalPushError;
+use crate::error::{InternalPushError, LablelInsertionError};
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
 use database::models::alerts::{
@@ -84,7 +84,7 @@ impl PostgresPlugin {
         })
     }
 
-    async fn insert_alert_group(
+    async fn insert_group(
         conn: &mut AsyncPgConnection,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<i32, InternalPushError> {
@@ -131,64 +131,80 @@ impl PostgresPlugin {
         Ok(())
     }
 
+    /// Helper function
+    ///
+    /// Only labels are shared between [`crate::database::models::groups::Group`] and [`crate::database::models::alerts::Alert`].
+    async fn insert_label(
+        conn: &mut AsyncPgConnection,
+        label: &InsertableLabel<'_>,
+    ) -> Result<i32, LablelInsertionError> {
+        let label_id_opt = database::schema::labels::table
+            .filter(
+                database::schema::labels::name
+                    .eq(&label.name)
+                    .and(database::schema::labels::value.eq(&label.value)),
+            )
+            .select(database::schema::labels::id)
+            .get_result::<i32>(conn)
+            .await
+            .optional()
+            .map_err(LablelInsertionError::Get)?;
+
+        let label_id = match label_id_opt {
+            Some(label_id) => {
+                tracing::trace!(
+                    name = %label.name,
+                    value = %label.value,
+                    "Label already exists."
+                );
+                label_id
+            }
+            None => diesel::insert_into(database::schema::labels::table)
+                .values(label)
+                .returning(database::schema::labels::id)
+                .get_result::<i32>(conn)
+                .await
+                .map_err(LablelInsertionError::Insert)?,
+        };
+
+        Ok(label_id)
+    }
+
     async fn insert_group_lables(
         conn: &mut AsyncPgConnection,
         group_id: i32,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
         for label in alertmanager_push.group_labels.iter() {
-            let group_label = InsertableLabel {
+            let lable = InsertableLabel {
                 name: label.0,
                 value: label.1,
             };
 
-            let label_id_opt = database::schema::labels::table
-                .filter(
-                    database::schema::labels::name
-                        .eq(&group_label.name)
-                        .and(database::schema::labels::value.eq(&group_label.value)),
-                )
-                .select(database::schema::labels::id)
-                .get_result::<i32>(conn)
+            let label_id = Self::insert_label(conn, &lable)
                 .await
-                .optional()
-                .map_err(|error| InternalPushError::GroupLabelId {
-                    group_key: alertmanager_push.group_key.clone(),
-                    label_name: group_label.name.to_owned(),
-                    label_value: group_label.value.to_owned(),
-                    error,
+                .map_err(|error| match error {
+                    LablelInsertionError::Get(error) => InternalPushError::GroupLabelId {
+                        group_key: alertmanager_push.group_key.clone(),
+                        label_name: lable.name.to_owned(),
+                        label_value: lable.value.to_owned(),
+                        error,
+                    },
+                    LablelInsertionError::Insert(error) => InternalPushError::GroupLabelInsertion {
+                        group_key: alertmanager_push.group_key.clone(),
+                        label_name: lable.name.to_owned(),
+                        label_value: lable.value.to_owned(),
+                        error,
+                    },
                 })?;
 
-            let label_id = match label_id_opt {
-                Some(label_id) => {
-                    tracing::trace!(
-                        name = %group_label.name,
-                        value = %group_label.value,
-                        "Group label already exists."
-                    );
-                    label_id
-                }
-                None => diesel::insert_into(database::schema::labels::table)
-                    .values(&group_label)
-                    .returning(database::schema::labels::id)
-                    .get_result::<i32>(conn)
-                    .await
-                    .map_err(|error| InternalPushError::GroupLabelInsertion {
-                        group_key: alertmanager_push.group_key.clone(),
-                        label_name: group_label.name.to_owned(),
-                        label_value: group_label.value.to_owned(),
-                        error,
-                    })?,
-            };
-
-            Self::assign_group_label(conn, group_id, label_id, &group_label, alertmanager_push)
-                .await?;
+            Self::assign_group_label(conn, group_id, label_id, &lable, alertmanager_push).await?;
         }
 
         Ok(())
     }
 
-    async fn assign_common_label(
+    async fn assign_group_common_label(
         conn: &mut AsyncPgConnection,
         group_id: i32,
         common_label_id: i32,
@@ -264,7 +280,7 @@ impl PostgresPlugin {
                     })?,
             };
 
-            Self::assign_common_label(
+            Self::assign_group_common_label(
                 conn,
                 group_id,
                 common_label_id,
@@ -277,7 +293,7 @@ impl PostgresPlugin {
         Ok(())
     }
 
-    async fn assign_common_annotation(
+    async fn assign_group_common_annotation(
         conn: &mut AsyncPgConnection,
         group_id: i32,
         common_annotation_id: i32,
@@ -356,7 +372,7 @@ impl PostgresPlugin {
                     })?,
             };
 
-            Self::assign_common_annotation(
+            Self::assign_group_common_annotation(
                 conn,
                 group_id,
                 common_annotation_id,
@@ -460,46 +476,24 @@ impl PostgresPlugin {
                 value: label.1,
             };
 
-            let label_id_opt = database::schema::labels::table
-                .filter(
-                    database::schema::labels::name
-                        .eq(&label.name)
-                        .and(database::schema::labels::value.eq(&label.value)),
-                )
-                .select(database::schema::labels::id)
-                .get_result::<i32>(conn)
+            let label_id = Self::insert_label(conn, &label)
                 .await
-                .optional()
-                .map_err(|error| InternalPushError::AlertLabelId {
-                    group_key: alertmanager_push.group_key.clone(),
-                    fingerprint: alert.fingerprint.clone(),
-                    label_name: label.name.to_owned(),
-                    label_value: label.value.to_owned(),
-                    error,
-                })?;
-
-            let label_id = match label_id_opt {
-                Some(label_id) => {
-                    tracing::trace!(
-                        name = %label.name,
-                        value = %label.value,
-                        "Alert label already exists."
-                    );
-                    label_id
-                }
-                None => diesel::insert_into(database::schema::labels::table)
-                    .values(&label)
-                    .returning(database::schema::labels::id)
-                    .get_result::<i32>(conn)
-                    .await
-                    .map_err(|error| InternalPushError::AlertLabelInsertion {
+                .map_err(|error| match error {
+                    LablelInsertionError::Get(error) => InternalPushError::AlertLabelId {
                         group_key: alertmanager_push.group_key.clone(),
                         fingerprint: alert.fingerprint.clone(),
                         label_name: label.name.to_owned(),
                         label_value: label.value.to_owned(),
                         error,
-                    })?,
-            };
+                    },
+                    LablelInsertionError::Insert(error) => InternalPushError::AlertLabelInsertion {
+                        group_key: alertmanager_push.group_key.clone(),
+                        fingerprint: alert.fingerprint.clone(),
+                        label_name: label.name.to_owned(),
+                        label_value: label.value.to_owned(),
+                        error,
+                    },
+                })?;
 
             Self::assign_alert_label(conn, alert_id, label_id, &label, alert, alertmanager_push)
                 .await?;
@@ -688,7 +682,7 @@ impl Push for PostgresPlugin {
             async move {
                 tracing::trace!("Starting transaction.");
 
-                let alert_group_id = Self::insert_alert_group(conn, alertmanager_push).await?;
+                let alert_group_id = Self::insert_group(conn, alertmanager_push).await?;
                 Self::insert_group_lables(conn, alert_group_id, alertmanager_push).await?;
                 Self::insert_common_labels(conn, alert_group_id, alertmanager_push).await?;
                 Self::insert_common_annotations(conn, alert_group_id, alertmanager_push).await?;

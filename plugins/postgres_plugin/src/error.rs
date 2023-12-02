@@ -168,3 +168,15 @@ pub enum InternalPushError {
         error: DieselError,
     },
 }
+
+#[derive(ThisError, Debug)]
+/// Error inserting a label
+///
+/// Only labels are shared between [`crate::database::models::groups::Group`] and [`crate::database::models::alerts::Alert`].
+/// So this error is used for both.
+pub enum LablelInsertionError {
+    #[error("Get error: {0}")]
+    Get(#[source] DieselError),
+    #[error("Insert error: {0}")]
+    Insert(#[source] DieselError),
+}
