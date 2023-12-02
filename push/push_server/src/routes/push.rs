@@ -113,11 +113,11 @@ async fn match_plugin_push(
 /// Helper struct
 ///
 /// Join handle for a plugin push response.
-struct PluginPushResponseJoinHandle {
+struct PluginPushResponseJoinHandle<'a> {
     /// Join handle
     join_handle: JoinHandle<PluginPushResponse>,
     /// In case the join handle panics or is cancelled, we still want to know which plugin it was
-    plugin: Arc<dyn PushAndPlugin>,
+    plugin: &'a dyn PushAndPlugin,
 }
 
 /// Helper function
@@ -141,13 +141,13 @@ async fn push_async(
 
     for plugin in affected_plugins.iter() {
         let plugin_c = Arc::clone(plugin);
-        let plugin_cc = Arc::clone(plugin);
+
         let alertmanager_push_c = alertmanager_push.clone();
         let handle =
             tokio::spawn(async move { match_plugin_push(&plugin_c, &alertmanager_push_c).await });
         plugin_response_handles.push(PluginPushResponseJoinHandle {
             join_handle: handle,
-            plugin: plugin_cc,
+            plugin: &***plugin, // Lol
         });
     }
 
