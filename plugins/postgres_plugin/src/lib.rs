@@ -26,6 +26,7 @@ use diesel_async::{
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use models::{Alert as AlertmanagerPushAlert, AlertmanagerPush, StandAloneAlert};
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
+use pull_definitions::{Pull, PullAlertsFilter, PullError};
 use push_definitions::{InitializeError, Push, PushError};
 use scoped_futures::ScopedFutureExt;
 use tokio::task::JoinHandle;
@@ -703,10 +704,36 @@ impl Push for PostgresPlugin {
     }
 }
 
+#[async_trait]
+impl Pull for PostgresPlugin {
+    #[tracing::instrument(name = "pull_alerts", skip_all, fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
+    async fn pull_alerts(
+        &self,
+        filter: &PullAlertsFilter,
+    ) -> Result<Vec<StandAloneAlert>, PullError> {
+        tracing::trace!("Pulling.");
+        let mut conn = self.pool.get().await.map_err(|error| PullError {
+            reason: error.to_string(),
+        })?;
+
+        let alerts = Self::pull_alerts_with_diesel_error(&mut conn, filter)
+            .await
+            .map_err(|error| PullError {
+                reason: error.to_string(),
+            })?;
+
+        tracing::trace!("Successfully pulled.");
+        Ok(alerts)
+    }
+}
+
 use diesel::result::Error as DieselError;
 impl PostgresPlugin {
     // we can apply some filters here!
-    async fn all_alerts(conn: &mut AsyncPgConnection) -> Result<Vec<StandAloneAlert>, DieselError> {
+    async fn pull_alerts_with_diesel_error(
+        conn: &mut AsyncPgConnection,
+        filter: &PullAlertsFilter,
+    ) -> Result<Vec<StandAloneAlert>, DieselError> {
         let alerts: Vec<Alert> = database::schema::alerts::table
             .select(Alert::as_select())
             .load(conn)
@@ -796,7 +823,7 @@ mod test {
 
     #[tokio::test]
     #[traced_test]
-    async fn insert_random_pushes() {
+    async fn push_random_alerts() {
         let plugin = create_and_init_plugin().await;
         let pushes = generate_random_alertmanager_pushes(100);
         for push in pushes.iter() {
@@ -808,10 +835,11 @@ mod test {
 
     #[tokio::test]
     #[traced_test]
-    async fn get_all_alerts_and_print_some() {
+    async fn pull_alerts() {
         let plugin = create_and_init_plugin().await;
-        let mut conn = plugin.pool.get().await.expect("Failed to get connection.");
-        let alerts = PostgresPlugin::all_alerts(&mut conn)
+        let filter = PullAlertsFilter {};
+        let alerts = plugin
+            .pull_alerts(&filter)
             .await
             .expect("Failed to get all alerts.");
 

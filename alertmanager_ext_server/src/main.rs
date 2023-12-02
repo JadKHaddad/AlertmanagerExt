@@ -5,7 +5,7 @@ async fn main() -> AnyResult<()> {
     if std::env::var_os("RUST_LOG").is_none() {
         std::env::set_var(
             "RUST_LOG",
-            "push_server=trace,push_server::extractors=trace,postgres_plugin=trace,sqlite_plugin=trace,tower_http=trace",
+            "alertmanager_ext_server=trace,push_server::extractors=trace,postgres_plugin=trace,sqlite_plugin=trace,tower_http=trace",
         );
     }
 
@@ -19,5 +19,5 @@ async fn main() -> AnyResult<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    push_server::server::run().await
+    alertmanager_ext_server::server::run().await
 }

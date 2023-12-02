@@ -49,7 +49,7 @@ pub async fn run() -> AnyResult<()> {
         .context("Failed to initialize Postgres plugin.")?;
 
     let sqlite_plugin_config = SqlitePluginConfig {
-        database_url: String::from("file:push/push_server/db/sqlite.db"),
+        database_url: String::from("file:alertmanager_ext_server/db/sqlite.db"),
     };
 
     let sqlite_plugin_meta = SqlitePluginMeta {

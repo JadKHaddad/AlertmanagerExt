@@ -5,7 +5,8 @@ resolver = "2"
 members = [
     "models",
     "push/push_definitions",
-    "push/push_server",
+    "pull/pull_definitions",
+    "alertmanager_ext_server",
     "plugins/plugins_definitions",
     "plugins/postgres_plugin",
     "plugins/mongo_plugin",
