@@ -1,12 +1,11 @@
-use crate::database::models::alert_status::AlertStatusModel;
+use crate::database::models::alert::{SelectableAlertAnnotation, SelectableAlertLabel};
+use crate::database::models::{alert::SelectableAlert, alert_status::AlertStatusModel};
 use crate::error::InternalPushError;
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
-use diesel::OptionalExtension;
-use diesel::{
-    query_dsl::methods::{FilterDsl, SelectDsl},
-    BoolExpressionMethods, Connection, ExpressionMethods, PgConnection,
-};
+use database::models::alert::DatabaseAlert;
+use diesel::{BoolExpressionMethods, Connection, ExpressionMethods, PgConnection};
+use diesel::{OptionalExtension, QueryDsl, SelectableHelper};
 use diesel_async::{
     pooled_connection::AsyncDieselConnectionManager, AsyncConnection, AsyncPgConnection,
     RunQueryDsl,
@@ -713,5 +712,14 @@ impl Push for PostgresPlugin {
 
         tracing::trace!("Successfully pushed.");
         Ok(())
+    }
+}
+
+use diesel::result::Error as DieselError;
+impl PostgresPlugin {
+    async fn get_all_alerts(
+        conn: &mut AsyncPgConnection,
+    ) -> Result<Vec<DatabaseAlert>, DieselError> {
+        todo!()
     }
 }
