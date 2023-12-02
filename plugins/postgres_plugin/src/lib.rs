@@ -1,4 +1,6 @@
 use crate::database::models::alert_status::AlertStatusModel;
+use crate::database::models::alerts::{Alert, AlertLabel};
+use crate::database::models::labels::Label;
 use crate::error::InternalPushError;
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
@@ -11,8 +13,11 @@ use database::models::groups::{
     InsertableGroupLabel,
 };
 use database::models::labels::{InsertableCommonLabel, InsertableLabel};
-use diesel::{BoolExpressionMethods, Connection, ExpressionMethods, PgConnection};
-use diesel::{OptionalExtension, QueryDsl};
+use diesel::{
+    BelongingToDsl, BoolExpressionMethods, Connection, ExpressionMethods, GroupedBy,
+    OptionalExtension, PgConnection, QueryDsl, SelectableHelper,
+};
+
 use diesel_async::{
     pooled_connection::AsyncDieselConnectionManager, AsyncConnection, AsyncPgConnection,
     RunQueryDsl,
@@ -704,26 +709,34 @@ impl Push for PostgresPlugin {
     }
 }
 
-use diesel::prelude::*;
 use diesel::result::Error as DieselError;
 impl PostgresPlugin {
     async fn get_all_alerts(
         conn: &mut AsyncPgConnection,
     ) -> Result<Vec<DatabaseAlert>, DieselError> {
-        // let all_alerts = database::schema::alert::table
-        //     .clone()
-        //     .select(database::models::alerts::Alert::as_select())
+        let all_alerts = database::schema::alerts::table
+            .select(Alert::as_select())
+            .load(conn)
+            .await?;
+
+        let labels = AlertLabel::belonging_to(&all_alerts)
+            .inner_join(database::schema::labels::table)
+            .select((AlertLabel::as_select(), Label::as_select()))
+            .load(conn)
+            .await?;
+
+        // let annotations = AlertAnnotation::belonging_to(&all_alerts)
+        //     .inner_join(database::schema::annotations::table)
+        //     .select((AlertAnnotation::as_select(), Annotation::as_select()))
         //     .load(conn)
         //     .await?;
 
-        // let assigned_labels = AssignAlertLabel::belonging_to(&all_alerts)
-        //     .inner_join(database::schema::alert_label::table)
-        //     .select((
-        //         database::models::alerts::AssignAlertLabel::as_select(),
-        //         database::models::alerts::AlertLabel::as_select(),
-        //     ))
-        //     .load(conn)
-        //     .await?;
+        let labels_per_alert: Vec<(Alert, Vec<Label>)> = labels
+            .grouped_by(&all_alerts)
+            .into_iter()
+            .zip(all_alerts)
+            .map(|(labels, alert)| (alert, labels.into_iter().map(|(_, label)| label).collect()))
+            .collect();
 
         todo!()
     }
