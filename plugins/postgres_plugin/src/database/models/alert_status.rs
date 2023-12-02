@@ -10,7 +10,7 @@ use diesel::{
 use models::Status as AlermanagerPushStatus;
 use std::io::Write;
 
-#[derive(Clone, Debug, FromSqlRow, AsExpression)]
+#[derive(Clone, Debug, FromSqlRow, AsExpression, PartialEq)]
 #[diesel(sql_type = AlertStatus)]
 pub enum AlertStatusModel {
     Resolved,

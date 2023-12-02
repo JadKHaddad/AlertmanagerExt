@@ -65,12 +65,12 @@ pub struct AlertAnnotation {
     pub annotation_id: i32,
 }
 
-// #[derive(Queryable)]
-// pub struct DatabaseAlert {
-//     pub selectable_alert: Alert,
-//     pub selectable_alert_labels: Vec<AlertLabel>,
-//     pub selectable_alert_annotations: Vec<AlertAnnotation>,
-// }
+#[derive(Queryable)]
+pub struct DatabaseAlert {
+    pub alert: Alert,
+    pub labels: Vec<Label>,
+    pub annotations: Vec<Annotation>,
+}
 
 // impl From<(Alert, Vec<AlertLabel>, Vec<AlertAnnotation>)> for DatabaseAlert {
 //     fn from(

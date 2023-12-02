@@ -11,7 +11,7 @@ use diesel::prelude::*;
 #[derive(Insertable)]
 #[diesel(table_name = groups)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct InsertableAlertGroup<'a> {
+pub struct InsertableGroup<'a> {
     pub group_key: &'a str,
     pub receiver: &'a str,
     pub status: &'a AlertStatusModel,
