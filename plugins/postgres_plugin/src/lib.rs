@@ -565,7 +565,7 @@ impl PostgresPlugin {
                     tracing::trace!(
                         name = %annotation.name,
                         value = %annotation.value,
-                        "Alert annotation already exists."
+                        "Annotation already exists."
                     );
                     alert_annotation_id
                 }
