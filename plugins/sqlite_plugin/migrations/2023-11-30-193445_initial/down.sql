@@ -1,25 +1,23 @@
 -- This file should undo anything in `up.sql`
 
-DROP TABLE IF EXISTS assign_alert_annotation;
+DROP TABLE IF EXISTS alerts_annotations;
 
-DROP TABLE IF EXISTS alert_annotation;
+DROP TABLE IF EXISTS alerts_labels;
 
-DROP TABLE IF EXISTS assign_alert_label;
+DROP TABLE IF EXISTS groups_common_annotations;
 
-DROP TABLE IF EXISTS alert_label;
+DROP TABLE IF EXISTS groups_common_labels;
 
-DROP TABLE IF EXISTS alert;
+DROP TABLE IF EXISTS groups_labels;
 
-DROP TABLE IF EXISTS assign_common_annotation;
+DROP TABLE IF EXISTS common_annotations;
 
-DROP TABLE IF EXISTS common_annotation;
+DROP TABLE IF EXISTS common_labels;
 
-DROP TABLE IF EXISTS assign_common_label;
+DROP TABLE IF EXISTS annotations;
 
-DROP TABLE IF EXISTS common_label;
+DROP TABLE IF EXISTS labels;
 
-DROP TABLE IF EXISTS assign_group_label;
+DROP TABLE IF EXISTS alerts;
 
-DROP TABLE IF EXISTS group_label;
-
-DROP TABLE IF EXISTS alert_group;
+DROP TABLE IF EXISTS groups;

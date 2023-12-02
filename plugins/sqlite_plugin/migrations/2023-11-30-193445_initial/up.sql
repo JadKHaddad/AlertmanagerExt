@@ -1,7 +1,7 @@
 -- Your SQL goes here
 
 CREATE TABLE
-    alert_group (
+    groups(
         id INTEGER PRIMARY KEY,
         timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         group_key VARCHAR(255) NOT NULL,
@@ -14,55 +14,10 @@ CREATE TABLE
     );
 
 CREATE TABLE
-    group_label (
+    alerts (
         id INTEGER PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        value VARCHAR(255) NOT NULL,
-        UNIQUE (name, value)
-    );
-
-CREATE TABLE
-    assign_group_label (
-        id INTEGER PRIMARY KEY,
-        alert_group_id INTEGER NOT NULL references alert_group(id),
-        group_label_id INTEGER NOT NULL references group_label(id)
-    );
-
-CREATE TABLE
-    common_label (
-        id INTEGER PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        value VARCHAR(255) NOT NULL,
-        UNIQUE (name, value)
-    );
-
-CREATE TABLE
-    assign_common_label(
-        id INTEGER PRIMARY KEY,
-        alert_group_id INTEGER NOT NULL references alert_group(id),
-        common_label_id INTEGER NOT NULL references common_label(id)
-    );
-
-CREATE TABLE
-    common_annotation (
-        id INTEGER PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        value VARCHAR(255) NOT NULL,
-        UNIQUE (name, value)
-    );
-
-CREATE TABLE
-    assign_common_annotation (
-        id INTEGER PRIMARY KEY,
-        alert_group_id INTEGER NOT NULL references alert_group(id),
-        common_annotation_id INTEGER NOT NULL references common_annotation(id)
-    );
-
-CREATE TABLE
-    alert (
-        id INTEGER PRIMARY KEY,
-        alert_group_id INTEGER NOT NULL references alert_group(id),
-        group_key VARCHAR(255) NOT NULL references alert_group(group_key),
+        group_id INTEGER NOT NULL references groups(id),
+        group_key VARCHAR(255) NOT NULL references groups(group_key),
         status VARCHAR(10) CHECK(
             status IN ('resolved', 'firing')
         ) NOT NULL,
@@ -74,7 +29,7 @@ CREATE TABLE
     );
 
 CREATE TABLE
-    alert_label (
+    labels (
         id INTEGER PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         value VARCHAR(255) NOT NULL,
@@ -82,14 +37,7 @@ CREATE TABLE
     );
 
 CREATE TABLE
-    assign_alert_label (
-        id INTEGER PRIMARY KEY,
-        alert_id INTEGER NOT NULL references alert(id),
-        alert_label_id INTEGER NOT NULL references alert_label(id)
-    );
-
-CREATE TABLE
-    alert_annotation (
+    annotations (
         id INTEGER PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         value VARCHAR(255) NOT NULL,
@@ -97,8 +45,55 @@ CREATE TABLE
     );
 
 CREATE TABLE
-    assign_alert_annotation (
+    common_labels (
         id INTEGER PRIMARY KEY,
-        alert_id INTEGER NOT NULL references alert(id),
-        alert_annotation_id INTEGER NOT NULL references alert_annotation(id)
+        name VARCHAR(255) NOT NULL,
+        value VARCHAR(255) NOT NULL,
+        UNIQUE (name, value)
+    );
+
+CREATE TABLE
+    common_annotations (
+        id INTEGER PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        value VARCHAR(255) NOT NULL,
+        UNIQUE (name, value)
+    );
+
+CREATE TABLE
+    groups_labels (
+        group_id INTEGER NOT NULL references groups(id),
+        label_id INTEGER NOT NULL references labels(id),
+        PRIMARY KEY (group_id, label_id)
+    );
+
+CREATE TABLE
+    groups_common_labels (
+        group_id INTEGER NOT NULL references groups(id),
+        common_label_id INTEGER NOT NULL references common_labels(id),
+        PRIMARY KEY (group_id, common_label_id)
+    );
+
+CREATE TABLE
+    groups_common_annotations (
+        group_id INTEGER NOT NULL references groups(id),
+        common_annotation_id INTEGER NOT NULL references common_annotations(id),
+        PRIMARY KEY (
+            group_id,
+            common_annotation_id
+        )
+    );
+
+CREATE TABLE
+    alerts_labels (
+        alert_id INTEGER NOT NULL references alerts(id),
+        label_id INTEGER NOT NULL references labels(id),
+        PRIMARY KEY (alert_id, label_id)
+    );
+
+CREATE TABLE
+    alerts_annotations (
+        alert_id INTEGER NOT NULL references alerts(id),
+        annotation_id INTEGER NOT NULL references annotations(id),
+        PRIMARY KEY (alert_id, annotation_id)
     );
