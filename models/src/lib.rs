@@ -50,3 +50,12 @@ pub struct Alert {
     /// fingerprint to identify the alert
     pub fingerprint: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[serde(rename_all = "camelCase")]
+/// An alert that can be sent to/retrieved from a plugin
+pub struct StandAloneAlert {
+    /// key identifying the group of alerts (e.g. to deduplicate)
+    pub group_key: String,
+    pub alert: Alert,
+}

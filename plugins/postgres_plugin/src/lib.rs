@@ -24,7 +24,7 @@ use diesel_async::{
     RunQueryDsl,
 };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use models::{Alert as AlertmanagerPushAlert, AlertmanagerPush};
+use models::{Alert as AlertmanagerPushAlert, AlertmanagerPush, StandAloneAlert};
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use push_definitions::{InitializeError, Push, PushError};
 use scoped_futures::ScopedFutureExt;
@@ -705,9 +705,8 @@ impl Push for PostgresPlugin {
 
 use diesel::result::Error as DieselError;
 impl PostgresPlugin {
-    async fn get_all_alerts(
-        conn: &mut AsyncPgConnection,
-    ) -> Result<Vec<DatabaseAlert>, DieselError> {
+    // we can apply some filters here!
+    async fn all_alerts(conn: &mut AsyncPgConnection) -> Result<Vec<StandAloneAlert>, DieselError> {
         let alerts: Vec<Alert> = database::schema::alerts::table
             .select(Alert::as_select())
             .load(conn)
@@ -758,7 +757,10 @@ impl PostgresPlugin {
             })
             .collect();
 
-        Ok(database_alerts)
+        Ok(database_alerts
+            .into_iter()
+            .map(|alert| alert.into())
+            .collect())
     }
 }
 
@@ -801,6 +803,22 @@ mod test {
             if let Err(error) = plugin.push_alert(push).await {
                 eprintln!("Failed to push alert: {:?}", error)
             }
+        }
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn get_all_alerts_and_print_some() {
+        let plugin = create_and_init_plugin().await;
+        let mut conn = plugin.pool.get().await.expect("Failed to get connection.");
+        let alerts = PostgresPlugin::all_alerts(&mut conn)
+            .await
+            .expect("Failed to get all alerts.");
+
+        let alerts = &alerts[0..15];
+
+        for alert in alerts.iter() {
+            println!("{:#?}", alert);
         }
     }
 }

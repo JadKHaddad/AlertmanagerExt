@@ -26,6 +26,15 @@ impl From<&AlermanagerPushStatus> for AlertStatusModel {
     }
 }
 
+impl From<AlertStatusModel> for AlermanagerPushStatus {
+    fn from(status: AlertStatusModel) -> Self {
+        match status {
+            AlertStatusModel::Resolved => AlermanagerPushStatus::Resolved,
+            AlertStatusModel::Firing => AlermanagerPushStatus::Firing,
+        }
+    }
+}
+
 impl<DB> ToSql<AlertStatus, DB> for AlertStatusModel
 where
     for<'c> DB: Backend<BindCollector<'c> = RawBytesBindCollector<DB>>,
