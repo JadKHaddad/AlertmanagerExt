@@ -1,5 +1,6 @@
 use crate::database::models::alert_status::AlertStatusModel;
-use crate::database::models::alerts::{Alert, AlertLabel};
+use crate::database::models::alerts::{Alert, AlertAnnotation, AlertLabel};
+use crate::database::models::annotations::Annotation;
 use crate::database::models::labels::Label;
 use crate::error::InternalPushError;
 use anyhow::{Context, Result as AnyResult};
@@ -714,30 +715,56 @@ impl PostgresPlugin {
     async fn get_all_alerts(
         conn: &mut AsyncPgConnection,
     ) -> Result<Vec<DatabaseAlert>, DieselError> {
-        let all_alerts = database::schema::alerts::table
+        let alerts: Vec<Alert> = database::schema::alerts::table
             .select(Alert::as_select())
             .load(conn)
             .await?;
 
-        let labels = AlertLabel::belonging_to(&all_alerts)
+        let labels: Vec<(AlertLabel, Label)> = AlertLabel::belonging_to(&alerts)
             .inner_join(database::schema::labels::table)
             .select((AlertLabel::as_select(), Label::as_select()))
             .load(conn)
             .await?;
 
-        // let annotations = AlertAnnotation::belonging_to(&all_alerts)
-        //     .inner_join(database::schema::annotations::table)
-        //     .select((AlertAnnotation::as_select(), Annotation::as_select()))
-        //     .load(conn)
-        //     .await?;
+        let annotations: Vec<(AlertAnnotation, Annotation)> =
+            AlertAnnotation::belonging_to(&alerts)
+                .inner_join(database::schema::annotations::table)
+                .select((AlertAnnotation::as_select(), Annotation::as_select()))
+                .load(conn)
+                .await?;
 
-        let labels_per_alert: Vec<(Alert, Vec<Label>)> = labels
-            .grouped_by(&all_alerts)
+        let labels_per_alert: Vec<(&Alert, Vec<Label>)> = labels
+            .grouped_by(&alerts)
             .into_iter()
-            .zip(all_alerts)
+            .zip(&alerts)
             .map(|(labels, alert)| (alert, labels.into_iter().map(|(_, label)| label).collect()))
             .collect();
 
-        todo!()
+        let annotations_per_alert: Vec<(&Alert, Vec<Annotation>)> = annotations
+            .grouped_by(&alerts)
+            .into_iter()
+            .zip(&alerts)
+            .map(|(annotations, alert)| {
+                (
+                    alert,
+                    annotations
+                        .into_iter()
+                        .map(|(_, annotation)| annotation)
+                        .collect(),
+                )
+            })
+            .collect();
+
+        let database_alerts: Vec<DatabaseAlert> = labels_per_alert
+            .into_iter()
+            .zip(annotations_per_alert)
+            .map(|((alert, labels), (_, annotations))| DatabaseAlert {
+                alert: alert.clone(),
+                labels,
+                annotations,
+            })
+            .collect();
+
+        Ok(database_alerts)
     }
 }
