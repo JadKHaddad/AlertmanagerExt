@@ -1,6 +1,6 @@
-use sqlx::FromRow;
+use sqlx::{FromRow, Type};
 
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone, FromRow, Type)]
 pub struct Label {
     pub id: i32,
     pub name: String,

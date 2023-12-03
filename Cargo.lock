@@ -1715,6 +1715,7 @@ dependencies = [
  "pull_definitions",
  "push_definitions",
  "rusqlite",
+ "serde",
  "sqlx",
  "thiserror",
  "tracing",

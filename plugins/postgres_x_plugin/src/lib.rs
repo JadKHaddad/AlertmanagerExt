@@ -1,5 +1,8 @@
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
+use database::models::{
+    alert_status::AlertStatusModel, alerts::DatabaseAlert, annotations::Annotation, labels::Label,
+};
 use models::StandAloneAlert;
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use pull_definitions::{Pull, PullAlertsFilter, PullError};
@@ -49,11 +52,6 @@ impl PostgresXPlugin {
             pool,
         })
     }
-
-    /// Set the configuration for the plugin
-    pub fn set_config(&mut self, config: PostgresXPluginConfig) {
-        self.config = Some(Box::new(config));
-    }
 }
 
 #[async_trait]
@@ -88,7 +86,18 @@ impl Pull for PostgresXPlugin {
     ) -> Result<Vec<StandAloneAlert>, PullError> {
         tracing::trace!("Pulling.");
 
+        let database_alerts = sqlx::query_file_as!(DatabaseAlert, "queries/pull_alerts.sql",)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|error| PullError {
+                reason: error.to_string(),
+            })?;
+
         tracing::trace!("Successfully pulled.");
-        todo!();
+
+        Ok(database_alerts
+            .into_iter()
+            .map(|alert| alert.into())
+            .collect())
     }
 }
