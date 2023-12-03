@@ -1,5 +1,8 @@
 use models::Status as AlermanagerPushStatus;
+use sqlx::Type;
 
+#[derive(Clone, Debug, PartialEq, PartialOrd, Type)]
+#[sqlx(type_name = "alert_status", rename_all = "lowercase")]
 pub enum AlertStatusModel {
     Resolved,
     Firing,

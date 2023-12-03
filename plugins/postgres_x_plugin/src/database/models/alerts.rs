@@ -1,7 +1,8 @@
-use models::{Alert as AlertmanagerPushAlert, StandAloneAlert};
-
 use super::{alert_status::AlertStatusModel, annotations::Annotation, labels::Label};
+use models::{Alert as AlertmanagerPushAlert, StandAloneAlert};
+use sqlx::FromRow;
 
+#[derive(Debug, Clone, FromRow)]
 pub struct Alert {
     pub id: i32,
     pub group_key: String,
@@ -12,11 +13,13 @@ pub struct Alert {
     pub fingerprint: String,
 }
 
+#[derive(Debug, Clone, FromRow)]
 pub struct AlertLabel {
     pub alert_id: i32,
     pub label_id: i32,
 }
 
+#[derive(Debug, Clone, FromRow)]
 pub struct AlertAnnotation {
     pub alert_id: i32,
     pub annotation_id: i32,
