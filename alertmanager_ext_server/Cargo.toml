@@ -13,6 +13,7 @@ postgres_plugin = { path = "../plugins/postgres_plugin" }
 mongo_plugin = { path = "../plugins/mongo_plugin" }
 sqlite_plugin = { path = "../plugins/sqlite_plugin" }
 file_plugin = { path = "../plugins/file_plugin" }
+print_plugin = { path = "../plugins/print_plugin" }
 tower = { workspace = true }
 tower-http = { workspace = true }
 tracing = { workspace = true }

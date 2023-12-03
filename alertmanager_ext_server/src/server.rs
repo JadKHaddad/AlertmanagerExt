@@ -73,7 +73,7 @@ pub async fn run() -> AnyResult<()> {
 
     let file_plugin_config = file_plugin::FilePluginConfig {
         dir_path: std::path::PathBuf::from("alertmanager_ext_server/pushes"),
-        file_type: file_plugin::FileType::JSON,
+        file_type: file_plugin::FileType::Json,
     };
 
     let mut file_plugin = file_plugin::FilePlugin::new(file_plugin_meta, file_plugin_config);
@@ -83,12 +83,29 @@ pub async fn run() -> AnyResult<()> {
         .await
         .context("Failed to initialize File plugin.")?;
 
+    let print_plugin_meta = print_plugin::PrintPluginMeta {
+        name: String::from("print_plugin_1"),
+        group: String::from("default"),
+    };
+
+    let print_plugin_config = print_plugin::PrintPluginConfig {
+        print_type: print_plugin::PrintType::Debug,
+    };
+
+    let mut print_plugin = print_plugin::PrintPlugin::new(print_plugin_meta, print_plugin_config);
+
+    print_plugin
+        .initialize()
+        .await
+        .context("Failed to initialize Print plugin.")?;
+
     // Plugins are initialized before they are added to the state.
     // Well because of Arc.
     let plugins: Vec<Arc<dyn PushAndPlugin>> = vec![
         Arc::new(postgres_plugin),
         Arc::new(sqlite_plugin),
         Arc::new(file_plugin),
+        Arc::new(print_plugin),
     ];
 
     let state = ApiState::new(plugins);

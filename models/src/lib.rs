@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 
 pub mod utils;
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 /// Alertmanager webhook payload
 ///
@@ -27,14 +27,14 @@ pub struct AlertmanagerPush {
     pub alerts: Vec<Alert>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub enum Status {
     Resolved,
     Firing,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct Alert {
     pub status: Status,
@@ -51,7 +51,7 @@ pub struct Alert {
     pub fingerprint: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 /// An alert that can be sent to/retrieved from a plugin
 pub struct StandAloneAlert {

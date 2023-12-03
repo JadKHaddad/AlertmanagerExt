@@ -9,15 +9,15 @@ mod error;
 
 /// The type of file to write
 pub enum FileType {
-    JSON,
-    YAML,
+    Json,
+    Yaml,
 }
 
 impl FileType {
     fn extension(&self) -> &'static str {
         match self {
-            Self::JSON => "json",
-            Self::YAML => "yaml",
+            Self::Json => "json",
+            Self::Yaml => "yaml",
         }
     }
 
@@ -26,12 +26,12 @@ impl FileType {
         T: serde::Serialize,
     {
         match self {
-            Self::JSON => |t: &T| {
+            Self::Json => |t: &T| {
                 serde_json::to_string(t).map_err(|error| SerializeError {
                     reason: error.to_string(),
                 })
             },
-            Self::YAML => |t: &T| {
+            Self::Yaml => |t: &T| {
                 serde_yaml::to_string(t).map_err(|error| SerializeError {
                     reason: error.to_string(),
                 })
