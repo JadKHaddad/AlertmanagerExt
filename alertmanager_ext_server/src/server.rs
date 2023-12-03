@@ -8,6 +8,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use file_plugin::FilePluginMeta;
 use postgres_plugin::{PostgresPlugin, PostgresPluginConfig, PostgresPluginMeta};
 use push_definitions::Push;
 use sqlite_plugin::{SqlitePlugin, SqlitePluginConfig, SqlitePluginMeta};
@@ -65,10 +66,30 @@ pub async fn run() -> AnyResult<()> {
         .await
         .context("Failed to initialize SQLite plugin.")?;
 
+    let file_plugin_meta = FilePluginMeta {
+        name: String::from("file_plugin_1"),
+        group: String::from("default"),
+    };
+
+    let file_plugin_config = file_plugin::FilePluginConfig {
+        dir_path: std::path::PathBuf::from("alertmanager_ext_server/pushes"),
+        file_type: file_plugin::FileType::JSON,
+    };
+
+    let mut file_plugin = file_plugin::FilePlugin::new(file_plugin_meta, file_plugin_config);
+
+    file_plugin
+        .initialize()
+        .await
+        .context("Failed to initialize File plugin.")?;
+
     // Plugins are initialized before they are added to the state.
     // Well because of Arc.
-    let plugins: Vec<Arc<dyn PushAndPlugin>> =
-        vec![Arc::new(postgres_plugin), Arc::new(sqlite_plugin)];
+    let plugins: Vec<Arc<dyn PushAndPlugin>> = vec![
+        Arc::new(postgres_plugin),
+        Arc::new(sqlite_plugin),
+        Arc::new(file_plugin),
+    ];
 
     let state = ApiState::new(plugins);
 

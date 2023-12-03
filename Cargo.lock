@@ -46,6 +46,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
+ "file_plugin",
  "models",
  "mongo_plugin",
  "plugins_definitions",
