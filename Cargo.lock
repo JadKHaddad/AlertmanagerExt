@@ -603,6 +603,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
+name = "file_plugin"
+version = "0.1.0"
+
+[[package]]
 name = "finl_unicode"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1211,6 +1215,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ntfy_plugin"
+version = "0.1.0"
+
+[[package]]
 name = "nu-ansi-term"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1433,6 +1441,10 @@ checksum = "31c0052426df997c0cbd30789eb44ca097e3541717a7b8fa36b1c464ee7edebd"
 dependencies = [
  "vcpkg",
 ]
+
+[[package]]
+name = "print_plugin"
+version = "0.1.0"
 
 [[package]]
 name = "proc-macro-error"
