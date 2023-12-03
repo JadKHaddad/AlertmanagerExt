@@ -6,3 +6,15 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+push_definitions = { path = "../../push/push_definitions" }
+plugins_definitions = { path = "../plugins_definitions" }
+models = { path = "../../models" }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-test = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
