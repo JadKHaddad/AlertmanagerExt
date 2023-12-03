@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 use thiserror::Error as ThisError;
-use tokio::io::Error as TokioError;
 
 #[derive(ThisError, Debug)]
 pub enum DirError {
@@ -14,15 +13,4 @@ pub enum DirError {
 #[error("Failed to serialize: {reason}")]
 pub struct SerializeError {
     pub reason: String,
-}
-
-#[derive(ThisError, Debug)]
-pub enum WriteError {
-    #[error("Failed to write file: {error}")]
-    Write {
-        #[source]
-        error: TokioError,
-    },
-    #[error(transparent)]
-    Serialize(SerializeError),
 }

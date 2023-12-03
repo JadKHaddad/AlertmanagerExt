@@ -1,9 +1,9 @@
 use async_trait::async_trait;
-use error::{DirError, SerializeError, WriteError};
+use error::{DirError, SerializeError};
 use models::AlertmanagerPush;
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use push_definitions::{InitializeError, Push, PushError};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 mod error;
 
@@ -108,15 +108,6 @@ impl FilePlugin {
 
         file_path
     }
-
-    async fn write_file(
-        path: impl AsRef<Path>,
-        contents: impl AsRef<[u8]>,
-    ) -> Result<(), WriteError> {
-        tokio::fs::write(path, contents)
-            .await
-            .map_err(|error| WriteError::Write { error })
-    }
 }
 
 #[async_trait]
@@ -161,13 +152,14 @@ impl Push for FilePlugin {
         tracing::trace!("Pushing.");
 
         let file_path = self.decide_file_path(alertmanager_push);
+
         let contents = self
             .serialize(alertmanager_push)
             .map_err(|error| PushError {
                 reason: error.to_string(),
             })?;
 
-        Self::write_file(file_path, contents)
+        tokio::fs::write(file_path, contents)
             .await
             .map_err(|error| PushError {
                 reason: error.to_string(),
