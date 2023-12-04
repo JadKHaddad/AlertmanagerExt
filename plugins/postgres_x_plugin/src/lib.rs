@@ -101,3 +101,43 @@ impl Pull for PostgresXPlugin {
             .collect())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use tracing_test::traced_test;
+
+    async fn create_plugin() -> PostgresXPlugin {
+        let postgres_x_plugin_config = PostgresXPluginConfig {
+            connection_string: String::from("postgres://user:password@localhost:5432/database"),
+            max_connections: 15,
+            connection_timeout: std::time::Duration::from_secs(5),
+        };
+
+        let postgres_x_plugin_meta = PostgresXPluginMeta {
+            name: String::from("postgres_x_plugin_1"),
+            group: String::from("default"),
+        };
+
+        PostgresXPlugin::new(postgres_x_plugin_meta, postgres_x_plugin_config)
+            .await
+            .expect("Failed to create Postgres plugin.")
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn pull_alerts() {
+        let plugin = create_plugin().await;
+        let filter = PullAlertsFilter {};
+        let alerts = plugin
+            .pull_alerts(&filter)
+            .await
+            .expect("Failed to get all alerts.");
+
+        let alerts = &alerts[0..15];
+
+        for alert in alerts.iter() {
+            println!("{:#?}", alert);
+        }
+    }
+}

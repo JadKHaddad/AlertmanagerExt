@@ -27,6 +27,7 @@ pub struct AlertAnnotation {
 
 #[derive(Debug, Clone, FromRow)]
 /// Had to flatten the Alert struct because [`sqlx::query_as!`] doesn't support `#[sqlx(flatten)]`
+/// /// We also had to use Options fot the vectors
 pub struct DatabaseAlert {
     pub id: i32,
     pub group_key: String,

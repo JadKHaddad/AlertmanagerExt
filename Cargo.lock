@@ -1718,7 +1718,9 @@ dependencies = [
  "serde",
  "sqlx",
  "thiserror",
+ "tokio",
  "tracing",
+ "tracing-test",
 ]
 
 [[package]]

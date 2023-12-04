@@ -12,7 +12,9 @@ plugins_definitions = { path = "../plugins_definitions" }
 models = { path = "../../models" }
 async-trait = { workspace = true }
 anyhow = { workspace = true }
+tokio = { workspace = true }
 tracing = { workspace = true }
+tracing-test = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
