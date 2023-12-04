@@ -15,6 +15,7 @@ use sqlite_plugin::{SqlitePlugin, SqlitePluginConfig, SqlitePluginMeta};
 use std::{net::SocketAddr, sync::Arc};
 use tower::ServiceBuilder;
 use tower_http::{
+    cors::CorsLayer,
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
     LatencyUnit,
 };
@@ -125,6 +126,7 @@ pub async fn run() -> AnyResult<()> {
         .with_state(state)
         .layer(
             ServiceBuilder::new()
+                .layer(CorsLayer::permissive())
                 .layer(middleware::from_fn(crate::middlewares::method_not_allowed))
                 .layer(
                     TraceLayer::new_for_http()
@@ -145,10 +147,38 @@ pub async fn run() -> AnyResult<()> {
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
 
     tracing::info!(%addr, "Starting server.");
+
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .context("Server failed")?;
 
     Ok(())
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to install CTRL+C signal handler.");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("Failed to install SIGTERM signal handler.")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    tracing::info!("Shutting down.");
 }
