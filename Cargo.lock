@@ -1682,6 +1682,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "postgres_definitions"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "diesel",
+ "models",
+ "plugins_definitions",
+ "pull_definitions",
+ "push_definitions",
+ "sqlx",
+]
+
+[[package]]
 name = "postgres_plugin"
 version = "0.1.0"
 dependencies = [
@@ -1694,6 +1707,7 @@ dependencies = [
  "diesel_migrations",
  "models",
  "plugins_definitions",
+ "postgres_definitions",
  "pull_definitions",
  "push_definitions",
  "scoped-futures",
@@ -1712,13 +1726,16 @@ dependencies = [
  "chrono",
  "models",
  "plugins_definitions",
+ "postgres_definitions",
  "pull_definitions",
  "push_definitions",
  "rusqlite",
  "serde",
  "sqlx",
  "thiserror",
+ "tokio",
  "tracing",
+ "tracing-test",
 ]
 
 [[package]]

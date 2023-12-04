@@ -15,6 +15,7 @@ members = [
     "plugins/ntfy_plugin",
     "plugins/file_plugin",
     "plugins/postgres_x_plugin",
+    "plugins/postgres_definitions",
 ]
 
 [workspace.dependencies]

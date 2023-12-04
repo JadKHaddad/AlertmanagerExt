@@ -1,13 +1,12 @@
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
-use database::models::{
-    alert_status::AlertStatusModel, alerts::DatabaseAlert, annotations::Annotation, labels::Label,
-};
 use models::StandAloneAlert;
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
+use postgres_definitions::database::models::{
+    alert_status::AlertStatusModel, alerts::SqlxDatabaseAlert, annotations::Annotation,
+    labels::Label,
+};
 use pull_definitions::{Pull, PullAlertsFilter, PullError};
-
-mod database;
 
 /// Configuration for the PostgresX plugin
 pub struct PostgresXPluginConfig {
@@ -86,7 +85,7 @@ impl Pull for PostgresXPlugin {
     ) -> Result<Vec<StandAloneAlert>, PullError> {
         tracing::trace!("Pulling.");
 
-        let database_alerts = sqlx::query_file_as!(DatabaseAlert, "queries/pull_alerts.sql",)
+        let database_alerts = sqlx::query_file_as!(SqlxDatabaseAlert, "queries/pull_alerts.sql",)
             .fetch_all(&self.pool)
             .await
             .map_err(|error| PullError {
@@ -99,5 +98,45 @@ impl Pull for PostgresXPlugin {
             .into_iter()
             .map(|alert| alert.into())
             .collect())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use tracing_test::traced_test;
+
+    async fn create_plugin() -> PostgresXPlugin {
+        let postgres_x_plugin_config = PostgresXPluginConfig {
+            connection_string: String::from("postgres://user:password@localhost:5432/database"),
+            max_connections: 15,
+            connection_timeout: std::time::Duration::from_secs(5),
+        };
+
+        let postgres_x_plugin_meta = PostgresXPluginMeta {
+            name: String::from("postgres_x_plugin_1"),
+            group: String::from("default"),
+        };
+
+        PostgresXPlugin::new(postgres_x_plugin_meta, postgres_x_plugin_config)
+            .await
+            .expect("Failed to create Postgres plugin.")
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn pull_alerts() {
+        let plugin = create_plugin().await;
+        let filter = PullAlertsFilter {};
+        let alerts = plugin
+            .pull_alerts(&filter)
+            .await
+            .expect("Failed to get all alerts.");
+
+        let alerts = &alerts[0..15];
+
+        for alert in alerts.iter() {
+            println!("{:#?}", alert);
+        }
     }
 }

@@ -1,22 +1,22 @@
-use crate::database::models::alert_status::AlertStatusModel;
-use crate::database::models::alerts::{Alert, AlertAnnotation, AlertLabel};
-use crate::database::models::annotations::Annotation;
-use crate::database::models::labels::Label;
 use crate::error::{InternalPushError, LablelInsertionError};
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
-use database::models::alerts::{
-    DatabaseAlert, InsertableAlert, InsertableAlertAnnotation, InsertableAlertLabel,
-};
-use database::models::annotations::{InsertableAnnotation, InsertableCommonAnnotation};
-use database::models::groups::{
-    InsertableGroup, InsertableGroupCommonAnnotation, InsertableGroupCommonLabel,
-    InsertableGroupLabel,
-};
-use database::models::labels::{InsertableCommonLabel, InsertableLabel};
 use diesel::{
     BelongingToDsl, BoolExpressionMethods, Connection, ExpressionMethods, GroupedBy,
     OptionalExtension, PgConnection, QueryDsl, SelectableHelper,
+};
+use postgres_definitions::database::models::{
+    alert_status::AlertStatusModel,
+    alerts::{
+        Alert, AlertAnnotation, AlertLabel, DieselDatabaseAlert, InsertableAlert,
+        InsertableAlertAnnotation, InsertableAlertLabel,
+    },
+    annotations::{Annotation, InsertableAnnotation, InsertableCommonAnnotation},
+    groups::{
+        InsertableGroup, InsertableGroupCommonAnnotation, InsertableGroupCommonLabel,
+        InsertableGroupLabel,
+    },
+    labels::{InsertableCommonLabel, InsertableLabel, Label},
 };
 
 use diesel_async::{
@@ -31,10 +31,9 @@ use push_definitions::{InitializeError, Push, PushError};
 use scoped_futures::ScopedFutureExt;
 use tokio::task::JoinHandle;
 
-mod database;
 mod error;
 
-const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+const MIGRATIONS: EmbeddedMigrations = embed_migrations!("../postgres_definitions/migrations");
 
 type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
 
@@ -96,9 +95,9 @@ impl PostgresPlugin {
             group_key: &alertmanager_push.group_key,
         };
 
-        let group_id = diesel::insert_into(database::schema::groups::table)
+        let group_id = diesel::insert_into(postgres_definitions::database::schema::groups::table)
             .values(&group)
-            .returning(database::schema::groups::id)
+            .returning(postgres_definitions::database::schema::groups::id)
             .get_result::<i32>(conn)
             .await
             .map_err(|error| InternalPushError::GroupInsertion {
@@ -118,7 +117,7 @@ impl PostgresPlugin {
     ) -> Result<(), InternalPushError> {
         let group_label = InsertableGroupLabel { group_id, label_id };
 
-        diesel::insert_into(database::schema::groups_labels::table)
+        diesel::insert_into(postgres_definitions::database::schema::groups_labels::table)
             .values(&group_label)
             .execute(conn)
             .await
@@ -133,19 +132,17 @@ impl PostgresPlugin {
     }
 
     /// Helper function
-    ///
-    /// Only labels are shared between [`crate::database::models::groups::Group`] and [`crate::database::models::alerts::Alert`].
     async fn insert_label(
         conn: &mut AsyncPgConnection,
         label: &InsertableLabel<'_>,
     ) -> Result<i32, LablelInsertionError> {
-        let label_id_opt = database::schema::labels::table
+        let label_id_opt = postgres_definitions::database::schema::labels::table
             .filter(
-                database::schema::labels::name
+                postgres_definitions::database::schema::labels::name
                     .eq(&label.name)
-                    .and(database::schema::labels::value.eq(&label.value)),
+                    .and(postgres_definitions::database::schema::labels::value.eq(&label.value)),
             )
-            .select(database::schema::labels::id)
+            .select(postgres_definitions::database::schema::labels::id)
             .get_result::<i32>(conn)
             .await
             .optional()
@@ -160,9 +157,9 @@ impl PostgresPlugin {
                 );
                 label_id
             }
-            None => diesel::insert_into(database::schema::labels::table)
+            None => diesel::insert_into(postgres_definitions::database::schema::labels::table)
                 .values(label)
-                .returning(database::schema::labels::id)
+                .returning(postgres_definitions::database::schema::labels::id)
                 .get_result::<i32>(conn)
                 .await
                 .map_err(LablelInsertionError::Insert)?,
@@ -217,7 +214,7 @@ impl PostgresPlugin {
             common_label_id,
         };
 
-        diesel::insert_into(database::schema::groups_common_labels::table)
+        diesel::insert_into(postgres_definitions::database::schema::groups_common_labels::table)
             .values(&group_common_label)
             .execute(conn)
             .await
@@ -242,13 +239,16 @@ impl PostgresPlugin {
                 value: common_label.1,
             };
 
-            let common_label_id_opt = database::schema::common_labels::table
+            let common_label_id_opt = postgres_definitions::database::schema::common_labels::table
                 .filter(
-                    database::schema::common_labels::name
+                    postgres_definitions::database::schema::common_labels::name
                         .eq(&common_label.name)
-                        .and(database::schema::common_labels::value.eq(&common_label.value)),
+                        .and(
+                            postgres_definitions::database::schema::common_labels::value
+                                .eq(&common_label.value),
+                        ),
                 )
-                .select(database::schema::common_labels::id)
+                .select(postgres_definitions::database::schema::common_labels::id)
                 .get_result::<i32>(conn)
                 .await
                 .optional()
@@ -268,17 +268,19 @@ impl PostgresPlugin {
                     );
                     common_label_id
                 }
-                None => diesel::insert_into(database::schema::common_labels::table)
-                    .values(&common_label)
-                    .returning(database::schema::common_labels::id)
-                    .get_result::<i32>(conn)
-                    .await
-                    .map_err(|error| InternalPushError::CommonLabelInsertion {
-                        group_key: alertmanager_push.group_key.clone(),
-                        label_name: common_label.name.to_owned(),
-                        label_value: common_label.value.to_owned(),
-                        error,
-                    })?,
+                None => diesel::insert_into(
+                    postgres_definitions::database::schema::common_labels::table,
+                )
+                .values(&common_label)
+                .returning(postgres_definitions::database::schema::common_labels::id)
+                .get_result::<i32>(conn)
+                .await
+                .map_err(|error| InternalPushError::CommonLabelInsertion {
+                    group_key: alertmanager_push.group_key.clone(),
+                    label_name: common_label.name.to_owned(),
+                    label_value: common_label.value.to_owned(),
+                    error,
+                })?,
             };
 
             Self::assign_group_common_label(
@@ -306,16 +308,18 @@ impl PostgresPlugin {
             common_annotation_id,
         };
 
-        diesel::insert_into(database::schema::groups_common_annotations::table)
-            .values(&group_common_annotation)
-            .execute(conn)
-            .await
-            .map_err(|error| InternalPushError::CommonAnnotationAssignment {
-                group_key: alertmanager_push.group_key.clone(),
-                annotation_name: common_annotation.name.to_owned(),
-                annotation_value: common_annotation.value.to_owned(),
-                error,
-            })?;
+        diesel::insert_into(
+            postgres_definitions::database::schema::groups_common_annotations::table,
+        )
+        .values(&group_common_annotation)
+        .execute(conn)
+        .await
+        .map_err(|error| InternalPushError::CommonAnnotationAssignment {
+            group_key: alertmanager_push.group_key.clone(),
+            annotation_name: common_annotation.name.to_owned(),
+            annotation_value: common_annotation.value.to_owned(),
+            error,
+        })?;
 
         Ok(())
     }
@@ -331,25 +335,26 @@ impl PostgresPlugin {
                 value: common_annotation.1,
             };
 
-            let common_annotation_id_opt = database::schema::common_annotations::table
-                .filter(
-                    database::schema::common_annotations::name
-                        .eq(&common_annotation.name)
-                        .and(
-                            database::schema::common_annotations::value
-                                .eq(&common_annotation.value),
-                        ),
-                )
-                .select(database::schema::common_annotations::id)
-                .get_result::<i32>(conn)
-                .await
-                .optional()
-                .map_err(|error| InternalPushError::CommonAnnotationId {
-                    group_key: alertmanager_push.group_key.clone(),
-                    annotation_name: common_annotation.name.to_owned(),
-                    annotation_value: common_annotation.value.to_owned(),
-                    error,
-                })?;
+            let common_annotation_id_opt =
+                postgres_definitions::database::schema::common_annotations::table
+                    .filter(
+                        postgres_definitions::database::schema::common_annotations::name
+                            .eq(&common_annotation.name)
+                            .and(
+                                postgres_definitions::database::schema::common_annotations::value
+                                    .eq(&common_annotation.value),
+                            ),
+                    )
+                    .select(postgres_definitions::database::schema::common_annotations::id)
+                    .get_result::<i32>(conn)
+                    .await
+                    .optional()
+                    .map_err(|error| InternalPushError::CommonAnnotationId {
+                        group_key: alertmanager_push.group_key.clone(),
+                        annotation_name: common_annotation.name.to_owned(),
+                        annotation_value: common_annotation.value.to_owned(),
+                        error,
+                    })?;
 
             let common_annotation_id = match common_annotation_id_opt {
                 Some(common_annotation_id) => {
@@ -360,17 +365,19 @@ impl PostgresPlugin {
                     );
                     common_annotation_id
                 }
-                None => diesel::insert_into(database::schema::common_annotations::table)
-                    .values(&common_annotation)
-                    .returning(database::schema::common_annotations::id)
-                    .get_result::<i32>(conn)
-                    .await
-                    .map_err(|error| InternalPushError::CommonAnnotationInsertion {
-                        group_key: alertmanager_push.group_key.clone(),
-                        annotation_name: common_annotation.name.to_owned(),
-                        annotation_value: common_annotation.value.to_owned(),
-                        error,
-                    })?,
+                None => diesel::insert_into(
+                    postgres_definitions::database::schema::common_annotations::table,
+                )
+                .values(&common_annotation)
+                .returning(postgres_definitions::database::schema::common_annotations::id)
+                .get_result::<i32>(conn)
+                .await
+                .map_err(|error| InternalPushError::CommonAnnotationInsertion {
+                    group_key: alertmanager_push.group_key.clone(),
+                    annotation_name: common_annotation.name.to_owned(),
+                    annotation_value: common_annotation.value.to_owned(),
+                    error,
+                })?,
             };
 
             Self::assign_group_common_annotation(
@@ -426,9 +433,9 @@ impl PostgresPlugin {
             fingerprint: &alert.fingerprint,
         };
 
-        let alert_id = diesel::insert_into(database::schema::alerts::table)
+        let alert_id = diesel::insert_into(postgres_definitions::database::schema::alerts::table)
             .values(&insertable_alert)
-            .returning(database::schema::alerts::id)
+            .returning(postgres_definitions::database::schema::alerts::id)
             .get_result::<i32>(conn)
             .await
             .map_err(|error| InternalPushError::AlertInsertion {
@@ -450,7 +457,7 @@ impl PostgresPlugin {
     ) -> Result<(), InternalPushError> {
         let alert_label = InsertableAlertLabel { alert_id, label_id };
 
-        diesel::insert_into(database::schema::alerts_labels::table)
+        diesel::insert_into(postgres_definitions::database::schema::alerts_labels::table)
             .values(&alert_label)
             .execute(conn)
             .await
@@ -516,7 +523,7 @@ impl PostgresPlugin {
             annotation_id,
         };
 
-        diesel::insert_into(database::schema::alerts_annotations::table)
+        diesel::insert_into(postgres_definitions::database::schema::alerts_annotations::table)
             .values(&alert_annotation)
             .execute(conn)
             .await
@@ -543,23 +550,27 @@ impl PostgresPlugin {
                 value: annotation.1,
             };
 
-            let alert_annotation_id_opt = database::schema::annotations::table
-                .filter(
-                    database::schema::annotations::name
-                        .eq(&annotation.name)
-                        .and(database::schema::annotations::value.eq(&annotation.value)),
-                )
-                .select(database::schema::annotations::id)
-                .get_result::<i32>(conn)
-                .await
-                .optional()
-                .map_err(|error| InternalPushError::AlertAnnotationId {
-                    group_key: alertmanager_push.group_key.clone(),
-                    fingerprint: alert.fingerprint.clone(),
-                    annotation_name: annotation.name.to_owned(),
-                    annotation_value: annotation.value.to_owned(),
-                    error,
-                })?;
+            let alert_annotation_id_opt =
+                postgres_definitions::database::schema::annotations::table
+                    .filter(
+                        postgres_definitions::database::schema::annotations::name
+                            .eq(&annotation.name)
+                            .and(
+                                postgres_definitions::database::schema::annotations::value
+                                    .eq(&annotation.value),
+                            ),
+                    )
+                    .select(postgres_definitions::database::schema::annotations::id)
+                    .get_result::<i32>(conn)
+                    .await
+                    .optional()
+                    .map_err(|error| InternalPushError::AlertAnnotationId {
+                        group_key: alertmanager_push.group_key.clone(),
+                        fingerprint: alert.fingerprint.clone(),
+                        annotation_name: annotation.name.to_owned(),
+                        annotation_value: annotation.value.to_owned(),
+                        error,
+                    })?;
 
             let alert_annotation_id = match alert_annotation_id_opt {
                 Some(alert_annotation_id) => {
@@ -570,18 +581,20 @@ impl PostgresPlugin {
                     );
                     alert_annotation_id
                 }
-                None => diesel::insert_into(database::schema::annotations::table)
-                    .values(&annotation)
-                    .returning(database::schema::annotations::id)
-                    .get_result::<i32>(conn)
-                    .await
-                    .map_err(|error| InternalPushError::AlertAnnotationInsertion {
-                        group_key: alertmanager_push.group_key.clone(),
-                        fingerprint: alert.fingerprint.clone(),
-                        annotation_name: annotation.name.to_owned(),
-                        annotation_value: annotation.value.to_owned(),
-                        error,
-                    })?,
+                None => {
+                    diesel::insert_into(postgres_definitions::database::schema::annotations::table)
+                        .values(&annotation)
+                        .returning(postgres_definitions::database::schema::annotations::id)
+                        .get_result::<i32>(conn)
+                        .await
+                        .map_err(|error| InternalPushError::AlertAnnotationInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            fingerprint: alert.fingerprint.clone(),
+                            annotation_name: annotation.name.to_owned(),
+                            annotation_value: annotation.value.to_owned(),
+                            error,
+                        })?
+                }
             };
 
             Self::assign_alert_annotation(
@@ -734,20 +747,20 @@ impl PostgresPlugin {
         conn: &mut AsyncPgConnection,
         filter: &PullAlertsFilter,
     ) -> Result<Vec<StandAloneAlert>, DieselError> {
-        let alerts: Vec<Alert> = database::schema::alerts::table
+        let alerts: Vec<Alert> = postgres_definitions::database::schema::alerts::table
             .select(Alert::as_select())
             .load(conn)
             .await?;
 
         let labels: Vec<(AlertLabel, Label)> = AlertLabel::belonging_to(&alerts)
-            .inner_join(database::schema::labels::table)
+            .inner_join(postgres_definitions::database::schema::labels::table)
             .select((AlertLabel::as_select(), Label::as_select()))
             .load(conn)
             .await?;
 
         let annotations: Vec<(AlertAnnotation, Annotation)> =
             AlertAnnotation::belonging_to(&alerts)
-                .inner_join(database::schema::annotations::table)
+                .inner_join(postgres_definitions::database::schema::annotations::table)
                 .select((AlertAnnotation::as_select(), Annotation::as_select()))
                 .load(conn)
                 .await?;
@@ -774,10 +787,10 @@ impl PostgresPlugin {
             })
             .collect();
 
-        let database_alerts: Vec<DatabaseAlert> = labels_per_alert
+        let database_alerts: Vec<DieselDatabaseAlert> = labels_per_alert
             .into_iter()
             .zip(annotations_per_alert)
-            .map(|((alert, labels), (_, annotations))| DatabaseAlert {
+            .map(|((alert, labels), (_, annotations))| DieselDatabaseAlert {
                 alert: alert.clone(),
                 labels,
                 annotations,

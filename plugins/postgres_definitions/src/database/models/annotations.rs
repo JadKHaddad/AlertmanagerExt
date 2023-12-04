@@ -1,5 +1,6 @@
 use crate::database::schema::{annotations, common_annotations};
 use diesel::prelude::*;
+use sqlx::{FromRow, Type};
 
 #[derive(Insertable)]
 #[diesel(table_name = annotations)]
@@ -9,7 +10,7 @@ pub struct InsertableAnnotation<'a> {
     pub value: &'a str,
 }
 
-#[derive(Queryable, Selectable, Identifiable, PartialEq, Debug, Clone)]
+#[derive(Queryable, Selectable, Identifiable, PartialEq, Debug, Clone, FromRow, Type)]
 #[diesel(table_name = annotations)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Annotation {

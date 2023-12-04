@@ -8,9 +8,11 @@ use diesel::{
     sql_types::VarChar,
 };
 use models::Status as AlermanagerPushStatus;
+use sqlx::Type;
 use std::io::Write;
 
-#[derive(Clone, Debug, FromSqlRow, AsExpression, PartialEq)]
+#[derive(Clone, Debug, FromSqlRow, AsExpression, PartialEq, Type)]
+#[sqlx(type_name = "alert_status", rename_all = "lowercase")]
 #[diesel(sql_type = AlertStatus)]
 pub enum AlertStatusModel {
     Resolved,

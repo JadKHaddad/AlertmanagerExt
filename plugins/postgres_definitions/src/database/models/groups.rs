@@ -7,6 +7,7 @@ use crate::database::schema::{
     groups, groups_common_annotations, groups_common_labels, groups_labels,
 };
 use diesel::prelude::*;
+use sqlx::FromRow;
 
 #[derive(Insertable)]
 #[diesel(table_name = groups)]
@@ -18,7 +19,7 @@ pub struct InsertableGroup<'a> {
     pub external_url: &'a str,
 }
 
-#[derive(Queryable, Selectable, Identifiable, PartialEq, Debug, Clone)]
+#[derive(Queryable, Selectable, Identifiable, PartialEq, Debug, Clone, FromRow)]
 #[diesel(table_name = groups)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Group {
@@ -37,7 +38,7 @@ pub struct InsertableGroupLabel {
     pub label_id: i32,
 }
 
-#[derive(Identifiable, Selectable, Queryable, Associations, Debug, Clone)]
+#[derive(Identifiable, Selectable, Queryable, Associations, Debug, Clone, FromRow)]
 #[diesel(belongs_to(Group))]
 #[diesel(belongs_to(Label))]
 #[diesel(table_name = groups_labels)]
@@ -55,7 +56,7 @@ pub struct InsertableGroupCommonLabel {
     pub common_label_id: i32,
 }
 
-#[derive(Identifiable, Selectable, Queryable, Associations, Debug, Clone)]
+#[derive(Identifiable, Selectable, Queryable, Associations, Debug, Clone, FromRow)]
 #[diesel(belongs_to(Group))]
 #[diesel(belongs_to(CommonLabel))]
 #[diesel(table_name = groups_common_labels)]
@@ -73,7 +74,7 @@ pub struct InsertableGroupCommonAnnotation {
     pub common_annotation_id: i32,
 }
 
-#[derive(Identifiable, Selectable, Queryable, Associations, Debug, Clone)]
+#[derive(Identifiable, Selectable, Queryable, Associations, Debug, Clone, FromRow)]
 #[diesel(belongs_to(Group))]
 #[diesel(belongs_to(CommonAnnotation))]
 #[diesel(table_name = groups_common_annotations)]

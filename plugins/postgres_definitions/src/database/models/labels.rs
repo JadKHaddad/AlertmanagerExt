@@ -1,5 +1,6 @@
 use crate::database::schema::{common_labels, labels};
 use diesel::prelude::*;
+use sqlx::{FromRow, Type};
 
 #[derive(Insertable)]
 #[diesel(table_name = labels)]
@@ -9,7 +10,7 @@ pub struct InsertableLabel<'a> {
     pub value: &'a str,
 }
 
-#[derive(Queryable, Selectable, Identifiable, PartialEq, Debug, Clone)]
+#[derive(Queryable, Selectable, Identifiable, PartialEq, Debug, Clone, FromRow, Type)]
 #[diesel(table_name = labels)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Label {
@@ -26,7 +27,7 @@ pub struct InsertableCommonLabel<'a> {
     pub value: &'a str,
 }
 
-#[derive(Queryable, Selectable, Identifiable, PartialEq, Debug, Clone)]
+#[derive(Queryable, Selectable, Identifiable, PartialEq, Debug, Clone, FromRow, Type)]
 #[diesel(table_name = common_labels)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct CommonLabel {

@@ -13,6 +13,7 @@ FROM (
             labels_per_alert.id,
             labels_per_alert.labels,
             ARRAY_AGG( (
+                    annotations.id,
                     annotations.name,
                     annotations.value
                 )
@@ -20,7 +21,12 @@ FROM (
         FROM (
                 SELECT
                     alerts.id,
-                    ARRAY_AGG( (labels.name, labels.value)) AS labels
+                    ARRAY_AGG( (
+                            labels.id,
+                            labels.name,
+                            labels.value
+                        )
+                    ) AS labels
                 FROM alerts
                     INNER JOIN alerts_labels ON alerts_labels.alert_id = alerts.id
                     INNER JOIN labels ON labels.id = alerts_labels.label_id
