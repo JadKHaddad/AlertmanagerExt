@@ -89,22 +89,8 @@ impl From<DatabaseAlert> for StandAloneAlert {
                     .into_iter()
                     .map(|annotation| (annotation.name, annotation.value))
                     .collect(),
-                starts_at: chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
-                    database_alert.alert.starts_at,
-                    chrono::Utc,
-                )
-                .to_rfc3339(),
-                ends_at: database_alert
-                    .alert
-                    .ends_at
-                    .map(|ends_at| {
-                        chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
-                            ends_at,
-                            chrono::Utc,
-                        )
-                        .to_rfc3339()
-                    })
-                    .unwrap_or_default(),
+                starts_at: database_alert.alert.starts_at,
+                ends_at: database_alert.alert.ends_at,
                 generator_url: database_alert.alert.generator_url,
                 fingerprint: database_alert.alert.fingerprint,
             },

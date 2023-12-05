@@ -88,22 +88,6 @@ pub enum InternalPushError {
         #[source]
         error: DieselError,
     },
-    #[error("Error parsing starts_at. group_key: {group_key}, fingerprint: {fingerprint}, got_starts_at: {got_starts_at}, error: {error}")]
-    StartsAtParsing {
-        group_key: String,
-        fingerprint: String,
-        got_starts_at: String,
-        #[source]
-        error: ChronoParseError,
-    },
-    #[error("Error parsing ends_at. group_key: {group_key}, fingerprint: {fingerprint}, got_ends_at: {got_ends_at}, error: {error}")]
-    EndsAtParsing {
-        group_key: String,
-        fingerprint: String,
-        got_ends_at: String,
-        #[source]
-        error: ChronoParseError,
-    },
     #[error(
         "Error inserting alert. group_key: {group_key}, fingerprint: {fingerprint}, error: {error}"
     )]

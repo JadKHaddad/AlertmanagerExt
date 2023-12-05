@@ -392,36 +392,12 @@ impl PostgresPlugin {
         alertmanager_push: &AlertmanagerPush,
         alert: &AlertmanagerPushAlert,
     ) -> Result<i32, InternalPushError> {
-        let starts_at = chrono::DateTime::parse_from_rfc3339(&alert.starts_at)
-            .map_err(|error| InternalPushError::StartsAtParsing {
-                group_key: alertmanager_push.group_key.clone(),
-                fingerprint: alert.fingerprint.clone(),
-                got_starts_at: alert.starts_at.clone(),
-                error,
-            })?
-            .naive_utc();
-
-        let ends_at = chrono::DateTime::parse_from_rfc3339(&alert.ends_at)
-            .map_err(|error| InternalPushError::EndsAtParsing {
-                group_key: alertmanager_push.group_key.clone(),
-                fingerprint: alert.fingerprint.clone(),
-                got_ends_at: alert.ends_at.clone(),
-                error,
-            })?
-            .naive_utc();
-
-        let ends_at = if ends_at > starts_at {
-            Some(ends_at)
-        } else {
-            None
-        };
-
         let insertable_alert = InsertableAlert {
             group_id,
             group_key: &alertmanager_push.group_key,
             status: &AlertStatusModel::from(&alert.status),
-            starts_at,
-            ends_at,
+            starts_at: alert.starts_at,
+            ends_at: alert.ends_at,
             generator_url: &alert.generator_url,
             fingerprint: &alert.fingerprint,
         };
@@ -826,7 +802,8 @@ mod test {
     async fn push_random_alerts() {
         let plugin = create_and_init_plugin().await;
         let pushes = generate_random_alertmanager_pushes(100);
-        for push in pushes.iter() {
+        for (i, push) in pushes.iter().enumerate() {
+            tracing::info!("Pushing alert {}/{}", i + 1, pushes.len());
             if let Err(error) = plugin.push_alert(push).await {
                 eprintln!("Failed to push alert: {:?}", error)
             }
@@ -843,10 +820,10 @@ mod test {
             .await
             .expect("Failed to get all alerts.");
 
-        let alerts = &alerts[0..15];
-
-        for alert in alerts.iter() {
+        for alert in alerts.iter().take(10) {
             println!("{:#?}", alert);
         }
+
+        println!("Total pulled: {}", alerts.len());
     }
 }

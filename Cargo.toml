@@ -26,7 +26,7 @@ tower-http = { version = "0.4.4", features = ["trace", "cors"] }
 async-trait = "0.1.74"
 thiserror = "1.0.50"
 anyhow = "1.0.75"
-schemars = "0.8.15"
+schemars = { version = "0.8.15", features = ["chrono"] }
 serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
 serde_yaml = "0.9.27"

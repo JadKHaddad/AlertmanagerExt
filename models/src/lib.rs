@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 
 pub mod utils;
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema, PartialEq, Eq, Hash)]
+#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 /// Alertmanager webhook payload
 ///
@@ -34,16 +34,20 @@ pub enum Status {
     Firing,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema, PartialEq, Eq, Hash)]
+#[derive(JsonSchema)]
+#[serde_with::serde_as]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct Alert {
     pub status: Status,
     pub labels: BTreeMap<String, String>,
     pub annotations: BTreeMap<String, String>,
     /// rfc3339
-    pub starts_at: String,
+    #[serde_as(as = "serde_with::chrono::DateTime<serde_with::chrono::Utc>")]
+    pub starts_at: chrono::NaiveDateTime,
     /// rfc3339
-    pub ends_at: String,
+    #[serde_as(as = "Option<serde_with::chrono::DateTime<serde_with::chrono::Utc>>")]
+    pub ends_at: Option<chrono::NaiveDateTime>,
     /// identifies the entity that caused the alert
     #[serde(rename = "generatorURL")]
     pub generator_url: String,
@@ -51,7 +55,7 @@ pub struct Alert {
     pub fingerprint: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 /// An alert that can be sent to/retrieved from a plugin
 pub struct StandAloneAlert {

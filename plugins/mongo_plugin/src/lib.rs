@@ -60,22 +60,6 @@ enum InternalPushError {
         #[source]
         error: MongoError,
     },
-    #[error("Error while parsing starts_at: group_key: {group_key}, fingerprint: {fingerprint}, got_starts_at: {got_starts_at}, error: {error}")]
-    StartsAtParsing {
-        group_key: String,
-        fingerprint: String,
-        got_starts_at: String,
-        #[source]
-        error: chrono::ParseError,
-    },
-    #[error("Error while parsing ends_at: group_key: {group_key}, fingerprint: {fingerprint}, got_ends_at: {got_ends_at}, error: {error}")]
-    EndsAtParsing {
-        group_key: String,
-        fingerprint: String,
-        got_ends_at: String,
-        #[source]
-        error: chrono::ParseError,
-    },
     #[error("Error while inserting alert: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}")]
     AlertInsertion {
         group_key: String,
@@ -316,34 +300,10 @@ impl Push for MongoPlugin {
 
         tracing::trace!("Inserting alerts.");
         for alert in alertmanager_push.alerts.iter() {
-            let starts_at = chrono::DateTime::parse_from_rfc3339(&alert.starts_at)
-                .map_err(|error| InternalPushError::StartsAtParsing {
-                    group_key: alertmanager_push.group_key.clone(),
-                    fingerprint: alert.fingerprint.clone(),
-                    got_starts_at: alert.starts_at.clone(),
-                    error,
-                })?
-                .naive_utc();
-
-            let ends_at = chrono::DateTime::parse_from_rfc3339(&alert.ends_at)
-                .map_err(|error| InternalPushError::EndsAtParsing {
-                    group_key: alertmanager_push.group_key.clone(),
-                    fingerprint: alert.fingerprint.clone(),
-                    got_ends_at: alert.ends_at.clone(),
-                    error,
-                })?
-                .naive_utc();
-
-            let ends_at = if ends_at > starts_at {
-                Some(ends_at)
-            } else {
-                None
-            };
-
             let insertable_alert = InsertableAlert {
                 status: alert.status.clone(),
-                starts_at,
-                ends_at,
+                starts_at: alert.starts_at,
+                ends_at: alert.ends_at,
                 generator_url: alert.generator_url.clone(),
                 fingerprint: alert.fingerprint.clone(),
             };

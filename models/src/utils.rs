@@ -26,11 +26,19 @@ fn generate_random_btreemap() -> BTreeMap<String, String> {
     map
 }
 
-fn generate_random_timestamp() -> String {
+fn generate_random_naive_date_time() -> chrono::NaiveDateTime {
     let now = Utc::now();
     let random_days: i64 = rand::thread_rng().gen_range(-30..=30);
     let random_timestamp = now + chrono::Duration::days(random_days);
-    random_timestamp.to_rfc3339()
+    random_timestamp.naive_utc()
+}
+
+fn generate_option_random_naive_date_time() -> Option<chrono::NaiveDateTime> {
+    if rand::random() {
+        Some(generate_random_naive_date_time())
+    } else {
+        None
+    }
 }
 
 fn generate_random_alert(n: usize) -> Alert {
@@ -42,8 +50,8 @@ fn generate_random_alert(n: usize) -> Alert {
         },
         labels: generate_random_btreemap(),
         annotations: generate_random_btreemap(),
-        starts_at: generate_random_timestamp(),
-        ends_at: generate_random_timestamp(),
+        starts_at: generate_random_naive_date_time(),
+        ends_at: generate_option_random_naive_date_time(),
         generator_url: generate_random_string(),
         fingerprint: format!("{n}-{}", generate_uuid()),
     }

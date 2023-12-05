@@ -53,15 +53,6 @@ pub enum PluginPushStatus {
     },
 }
 
-impl HasStatusCode for PluginPushStatus {
-    fn status_code(&self) -> StatusCode {
-        match self {
-            PluginPushStatus::Ok => StatusCode::ACCEPTED,
-            PluginPushStatus::Failed { .. } => StatusCode::INTERNAL_SERVER_ERROR,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, JsonSchema, ToSchema)]
 #[serde(rename_all = "camelCase")]
 /// Response for a plugin push
@@ -205,7 +196,7 @@ async fn push_async(
     ),
     request_body = AlermanagerPush, 
     responses(
-        (status = 200, description = "Push was successful.", body = PushResponse),
+        (status = 202, description = "Push was successful.", body = PushResponse),
         (status = 207, description = "Some pushes were successful.", body = PushResponse),
         (status = 500, description = "Push failed.", body = PushResponse),
         (status = 404, description = "No plugins were found.", body = PushResponse)
