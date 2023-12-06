@@ -127,7 +127,9 @@ pub async fn run() -> AnyResult<()> {
         .layer(
             ServiceBuilder::new()
                 .layer(CorsLayer::permissive())
-                .layer(middleware::from_fn(crate::middlewares::method_not_allowed))
+                .layer(middleware::from_fn(
+                    crate::middlewares::method_not_allowed::method_not_allowed,
+                ))
                 .layer(
                     TraceLayer::new_for_http()
                         .make_span_with(
@@ -141,7 +143,10 @@ pub async fn run() -> AnyResult<()> {
                                 .level(Level::INFO)
                                 .latency_unit(LatencyUnit::Micros),
                         ),
-                ),
+                )
+                .layer(middleware::from_fn(
+                    crate::middlewares::trace_response_body::trace_response_body,
+                )),
         );
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));

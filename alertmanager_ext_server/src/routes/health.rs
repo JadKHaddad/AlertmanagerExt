@@ -1,4 +1,4 @@
-use crate::extractors::ApiQuery;
+use crate::extractors::query::ApiQuery;
 use crate::routes::models::PluginResponseMeta;
 use crate::routes::utils;
 use crate::state::ApiState;

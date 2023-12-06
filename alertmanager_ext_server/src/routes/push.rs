@@ -1,5 +1,5 @@
 use crate::{
-    extractors::{ApiJson, ApiQuery},
+    extractors::{json::ApiJson, query::ApiQuery},
     prometheus_client::PushLabel,
     state::ApiState,
     traits::{HasStatusCode, PushAndPlugin}, routes::utils,
