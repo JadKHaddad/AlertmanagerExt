@@ -7,9 +7,10 @@ use models::{AlertmanagerPush, StandAloneAlert};
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use pull_definitions::{Pull, PullAlertsFilter, PullError};
 use push_definitions::{InitializeError, Push, PushError};
-use sqlx::postgres::any::AnyConnectionBackend;
+use sqlx::Connection;
 
 mod database;
+mod error;
 
 /// Configuration for the PostgresX plugin
 pub struct PostgresXPluginConfig {
@@ -101,8 +102,45 @@ impl Push for PostgresXPlugin {
     async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
 
-        // TODO
-        tracing::warn!("Not implemented yet.");
+        // Failed to acquire connection
+        let mut conn = self.pool.acquire().await.map_err(|error| PushError {
+            reason: error.to_string(),
+        })?;
+
+        // Failed to begin transaction
+        let mut tx = conn.begin().await.map_err(|error| PushError {
+            reason: error.to_string(),
+        })?;
+
+        let status = AlertStatusModel::from(&alertmanager_push.status);
+        let group_id = sqlx::query!(r#"INSERT INTO groups (group_key, receiver, status , external_url) VALUES ($1, $2, $3, $4) RETURNING id"#, alertmanager_push.group_key, alertmanager_push.receiver, status as AlertStatusModel, alertmanager_push.external_url)
+                    .fetch_one(&mut *tx)
+                    .await.map_err(|error| PushError {
+                        reason: error.to_string(),
+                    })
+                    ?.id;
+
+        dbg!(group_id);
+
+        // Failed to commit transaction
+        tx.commit().await.map_err(|error| PushError {
+            reason: error.to_string(),
+        })?;
+
+        // this will stay here for a while
+        // let s: Result<i32, sqlx::Error> = conn.transaction(|txn| {
+        //     Box::pin(async move {
+        //         let status = AlertStatusModel::from(&alertmanager_push.status);
+        //         let group_id = sqlx::query!(r#"INSERT INTO groups (group_key, receiver, status , external_url) VALUES ($1, $2, $3, $4) RETURNING id"#, alertmanager_push.group_key, alertmanager_push.receiver, status as AlertStatusModel, alertmanager_push.external_url)
+        //             .fetch_one(&mut **txn)
+        //             .await
+        //             ?
+        //             .id;
+
+        //         Ok(group_id)
+        //     })
+        // })
+        // .await;
 
         tracing::trace!("Successfully pushed.");
         Ok(())
