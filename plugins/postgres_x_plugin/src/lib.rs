@@ -278,6 +278,28 @@ impl Push for PostgresXPlugin {
             })?;
         }
 
+        for alert in alertmanager_push.alerts.iter() {
+            let status = AlertStatusModel::from(&alert.status);
+            let alert_id = sqlx::query!(
+                r#"
+                INSERT INTO alerts (group_id, group_key, status, starts_at, ends_at, generator_url, fingerprint) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
+                "#,
+                group_id,
+                alertmanager_push.group_key,
+                status as AlertStatusModel,
+                alert.starts_at,
+                alert.ends_at,
+                alert.generator_url,
+                alert.fingerprint
+            )
+            .fetch_one(&mut *tx)
+            .await.map_err(|error| InternalPushError::GroupInsertion{
+                group_key: alertmanager_push.group_key.clone(),
+                error
+            })?
+            .id;
+        }
+
         tx.commit().await.map_err(InternalPushError::TransactionCommit)?;
 
         // this will stay here for a while
@@ -289,7 +311,6 @@ impl Push for PostgresXPlugin {
         //             .await
         //             ?
         //             .id;
-
         //         Ok(group_id)
         //     })
         // })
