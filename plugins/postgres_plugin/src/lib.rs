@@ -641,7 +641,7 @@ impl Push for PostgresPlugin {
                 reason: error.to_string(),
             })?
             .map_err(|error| InitializeError {
-                reason: error.to_string(),
+                reason: format!("{:#}", error),
             })?;
 
         tracing::trace!("Successfully initialized.");

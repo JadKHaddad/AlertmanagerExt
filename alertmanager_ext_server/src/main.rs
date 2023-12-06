@@ -21,10 +21,5 @@ async fn main() -> AnyResult<()> {
         .map_err(|error| anyhow::anyhow!(error))
         .context("Failed to initialize tracing subscriber")?;
 
-    if let Err(error) = alertmanager_ext_server::server::run().await {
-        tracing::error!(error = format!("{:#}", error));
-        std::process::exit(1);
-    }
-
-    Ok(())
+    alertmanager_ext_server::server::run().await
 }
