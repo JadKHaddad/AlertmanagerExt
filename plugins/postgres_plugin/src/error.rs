@@ -1,4 +1,3 @@
-use chrono::ParseError as ChronoParseError;
 use diesel::result::Error as DieselError;
 use thiserror::Error as ThisError;
 

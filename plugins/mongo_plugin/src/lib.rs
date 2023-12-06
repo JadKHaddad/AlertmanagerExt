@@ -1,3 +1,4 @@
+use self::error::InternalPushError;
 use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
 use database::models::{
@@ -8,93 +9,12 @@ use database::models::{
     },
 };
 use models::AlertmanagerPush;
-use mongodb::{
-    bson::doc, error::Error as MongoError, options::ClientOptions, Client, Collection, Database,
-};
+use mongodb::{bson::doc, options::ClientOptions, Client, Collection, Database};
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use push_definitions::{InitializeError, Push, PushError};
-use thiserror::Error as ThisError;
 
 mod database;
-
-#[derive(ThisError, Debug)]
-enum InternalPushError {
-    #[error("Error while starting session, error: {error}")]
-    StartSession {
-        #[source]
-        error: MongoError,
-    },
-    #[error("Error while starting transaction, error: {error}")]
-    StartTransaction {
-        #[source]
-        error: MongoError,
-    },
-    #[error("Error while committing transaction, error: {error}")]
-    CommitTransaction {
-        #[source]
-        error: MongoError,
-    },
-    #[error("Error while inserting alert group: group_key: {group_key}, error: {error}")]
-    GroupInsertion {
-        group_key: String,
-        #[source]
-        error: MongoError,
-    },
-    #[error("Error while obtaining alert group id: group_key: {group_key}")]
-    GroupId { group_key: String },
-    #[error("Error while inserting group labels: group_key: {group_key}, error: {error}")]
-    GroupLabelsInsertion {
-        group_key: String,
-        #[source]
-        error: MongoError,
-    },
-    #[error("Error while inserting common labels: group_key: {group_key}, error: {error}")]
-    CommonLabelsInsertion {
-        group_key: String,
-        #[source]
-        error: MongoError,
-    },
-    #[error("Error while inserting common annotations: group_key: {group_key}, error: {error}")]
-    CommonAnnotationsInsertion {
-        group_key: String,
-        #[source]
-        error: MongoError,
-    },
-    #[error("Error while inserting alert: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}")]
-    AlertInsertion {
-        group_key: String,
-        fingerprint: String,
-        #[source]
-        error: MongoError,
-    },
-    #[error("Error while obtaining alertid: group_key: {group_key}, fingerprint: {fingerprint}")]
-    AlertId {
-        group_key: String,
-        fingerprint: String,
-    },
-    #[error("Error while inserting alert labels: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}")]
-    AlertLabelsInsertion {
-        group_key: String,
-        fingerprint: String,
-        #[source]
-        error: MongoError,
-    },
-    #[error("Error while inserting alert annotations: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}")]
-    AlertAnnotationsInsertion {
-        group_key: String,
-        fingerprint: String,
-        #[source]
-        error: MongoError,
-    },
-}
-
-impl From<InternalPushError> for PushError {
-    fn from(error: InternalPushError) -> Self {
-        PushError {
-            reason: error.to_string(),
-        }
-    }
-}
+mod error;
 
 /// Configuration for the mongo plugin
 pub struct MongoPluginConfig {
