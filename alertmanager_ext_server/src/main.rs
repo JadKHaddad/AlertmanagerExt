@@ -1,4 +1,4 @@
-use anyhow::Result as AnyResult;
+use anyhow::{Context, Result as AnyResult};
 
 #[tokio::main]
 async fn main() -> AnyResult<()> {
@@ -17,7 +17,14 @@ async fn main() -> AnyResult<()> {
         .with_level(true)
         .with_ansi(true)
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+        .try_init()
+        .map_err(|error| anyhow::anyhow!(error))
+        .context("Failed to initialize tracing subscriber")?;
 
-    alertmanager_ext_server::server::run().await
+    if let Err(error) = alertmanager_ext_server::server::run().await {
+        tracing::error!(error = format!("{:#}", error));
+        std::process::exit(1);
+    }
+
+    Ok(())
 }

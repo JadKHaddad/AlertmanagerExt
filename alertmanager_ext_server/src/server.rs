@@ -43,12 +43,12 @@ pub async fn run() -> AnyResult<()> {
 
     let mut postgres_plugin = PostgresPlugin::new(postgres_plugin_meta, postgres_plugin_config)
         .await
-        .context("Failed to create Postgres plugin.")?;
+        .context("Failed to create Postgres plugin")?;
 
     postgres_plugin
         .initialize()
         .await
-        .context("Failed to initialize Postgres plugin.")?;
+        .context("Failed to initialize Postgres plugin")?;
 
     let sqlite_plugin_config = SqlitePluginConfig {
         database_url: String::from("file:alertmanager_ext_server/db/sqlite.db"),
@@ -60,12 +60,12 @@ pub async fn run() -> AnyResult<()> {
     };
 
     let mut sqlite_plugin = SqlitePlugin::new(sqlite_plugin_meta, sqlite_plugin_config)
-        .context("Failed to create SQLite plugin.")?;
+        .context("Failed to create SQLite plugin")?;
 
     sqlite_plugin
         .initialize()
         .await
-        .context("Failed to initialize SQLite plugin.")?;
+        .context("Failed to initialize SQLite plugin")?;
 
     let file_plugin_meta = FilePluginMeta {
         name: String::from("file_plugin_1"),
@@ -82,7 +82,7 @@ pub async fn run() -> AnyResult<()> {
     file_plugin
         .initialize()
         .await
-        .context("Failed to initialize File plugin.")?;
+        .context("Failed to initialize File plugin")?;
 
     let print_plugin_meta = print_plugin::PrintPluginMeta {
         name: String::from("print_plugin_1"),
@@ -98,7 +98,7 @@ pub async fn run() -> AnyResult<()> {
     print_plugin
         .initialize()
         .await
-        .context("Failed to initialize Print plugin.")?;
+        .context("Failed to initialize Print plugin")?;
 
     // Plugins are initialized before they are added to the state.
     // Well because of Arc.

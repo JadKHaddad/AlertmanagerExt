@@ -46,7 +46,7 @@ impl SqlitePlugin {
         );
         let pool = deadpool_diesel::sqlite::Pool::builder(manager)
             .build()
-            .context("Failed to create pool.")?;
+            .context("Failed to create pool")?;
 
         Ok(Self {
             meta,
@@ -93,11 +93,11 @@ impl Push for SqlitePlugin {
         let database_url = config.database_url;
         let handle: JoinHandle<AnyResult<()>> = tokio::task::spawn_blocking(move || {
             let mut conn = SqliteConnection::establish(&database_url)
-                .context("Failed to establish connection.")?;
+                .context("Failed to establish connection")?;
 
             conn.run_pending_migrations(MIGRATIONS)
                 .map_err(|error| anyhow::anyhow!(error))
-                .context("Failed to run migrations.")?;
+                .context("Failed to run migrations")?;
 
             Ok(())
         });

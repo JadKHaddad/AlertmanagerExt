@@ -47,7 +47,7 @@ impl PostgresXPlugin {
             .acquire_timeout(config.connection_timeout)
             .connect(&config.connection_string)
             .await
-            .context("Failed to create pool.")?;
+            .context("Failed to create pool")?;
 
         Ok(Self {
             meta,

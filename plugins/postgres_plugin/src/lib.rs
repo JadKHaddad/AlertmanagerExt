@@ -76,7 +76,7 @@ impl PostgresPlugin {
             .connection_timeout(config.connection_timeout)
             .build(manager)
             .await
-            .context("Failed to create pool.")?;
+            .context("Failed to create pool")?;
 
         Ok(Self {
             meta,
@@ -626,11 +626,11 @@ impl Push for PostgresPlugin {
         let connection_string = config.connection_string;
         let handle: JoinHandle<AnyResult<()>> = tokio::task::spawn_blocking(move || {
             let mut conn = PgConnection::establish(&connection_string)
-                .context("Failed to establish connection.")?;
+                .context("Failed to establish connection")?;
 
             conn.run_pending_migrations(MIGRATIONS)
                 .map_err(|error| anyhow::anyhow!(error))
-                .context("Failed to run migrations.")?;
+                .context("Failed to run migrations")?;
 
             Ok(())
         });
