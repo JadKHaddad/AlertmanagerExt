@@ -9,6 +9,8 @@ use pull_definitions::{Pull, PullAlertsFilter, PullError};
 use push_definitions::{InitializeError, Push, PushError};
 use sqlx::Connection;
 
+use crate::error::InternalPushError;
+
 mod database;
 mod error;
 
@@ -102,15 +104,9 @@ impl Push for PostgresXPlugin {
     async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
 
-        // Failed to acquire connection
-        let mut conn = self.pool.acquire().await.map_err(|error| PushError {
-            reason: error.to_string(),
-        })?;
+        let mut conn = self.pool.acquire().await.map_err(InternalPushError::Acquire)?;
 
-        // Failed to begin transaction
-        let mut tx = conn.begin().await.map_err(|error| PushError {
-            reason: error.to_string(),
-        })?;
+        let mut tx = conn.begin().await.map_err(InternalPushError::TransactionStart)?;
 
         let status = AlertStatusModel::from(&alertmanager_push.status);
         let group_id = sqlx::query!(
@@ -123,17 +119,166 @@ impl Push for PostgresXPlugin {
             alertmanager_push.external_url
         )
         .fetch_one(&mut *tx)
-        .await.map_err(|error| PushError {
-            reason: error.to_string(),
-        })
-        ?.id;
+        .await.map_err(|error| InternalPushError::GroupInsertion{
+            group_key: alertmanager_push.group_key.clone(),
+            error
+        })?
+        .id;
 
-        dbg!(group_id);
+        for (label_name, label_value)  in alertmanager_push.group_labels.iter() {
+            let label_id_opt = sqlx::query!(
+                r#"
+                SELECT id FROM labels WHERE name = $1 AND value = $2
+                "#,
+                label_name,
+                label_value
+            ).fetch_optional(&mut *tx).await.map_err(|error| InternalPushError::GroupLabelId{
+                group_key: alertmanager_push.group_key.clone(),
+                label_name: label_name.clone(),
+                label_value: label_value.clone(),
+                error
+            })?.map(|row| row.id);
 
-        // Failed to commit transaction
-        tx.commit().await.map_err(|error| PushError {
-            reason: error.to_string(),
-        })?;
+            let label_id = match label_id_opt {
+                Some(label_id) => {
+                    tracing::trace!(
+                        name = %label_name,
+                        value = %label_value,
+                        "Label already exists."
+                    );
+                    label_id
+                }
+                None => sqlx::query!(
+                    r#"
+                    INSERT INTO labels (name, value) VALUES ($1, $2) RETURNING id
+                    "#,
+                    label_name,
+                    label_value
+                ).fetch_one(&mut *tx).await.map_err(|error| InternalPushError::GroupLabelInsertion{
+                    group_key: alertmanager_push.group_key.clone(),
+                    label_name: label_name.clone(),
+                    label_value: label_value.clone(),
+                    error
+                })?.id
+            };
+
+            sqlx::query!(
+                r#"
+                INSERT INTO groups_labels (group_id, label_id) VALUES ($1, $2)
+                "#,
+                group_id,
+                label_id
+            ).execute(&mut *tx).await.map_err(|error| InternalPushError::GroupLabelAssignment{
+                group_key: alertmanager_push.group_key.clone(),
+                label_name: label_name.clone(),
+                label_value: label_value.clone(),
+                error
+            })?;
+        }
+
+        for (common_label_name, common_label_value)  in alertmanager_push.common_labels.iter() {
+            let common_label_id_opt = sqlx::query!(
+                r#"
+                SELECT id FROM common_labels WHERE name = $1 AND value = $2
+                "#,
+                common_label_name,
+                common_label_value
+            ).fetch_optional(&mut *tx).await.map_err(|error| InternalPushError::CommonLabelId{
+                group_key: alertmanager_push.group_key.clone(),
+                label_name: common_label_name.clone(),
+                label_value: common_label_value.clone(),
+                error
+            })?.map(|row| row.id);
+
+            let common_label_id = match common_label_id_opt {
+                Some(label_id) => {
+                    tracing::trace!(
+                        name = %common_label_name,
+                        value = %common_label_value,
+                        "Common label already exists."
+                    );
+                    label_id
+                }
+                None => sqlx::query!(
+                    r#"
+                    INSERT INTO common_labels (name, value) VALUES ($1, $2) RETURNING id
+                    "#,
+                    common_label_name,
+                    common_label_value
+                ).fetch_one(&mut *tx).await.map_err(|error| InternalPushError::CommonLabelInsertion{
+                    group_key: alertmanager_push.group_key.clone(),
+                    label_name: common_label_name.clone(),
+                    label_value: common_label_value.clone(),
+                    error
+                })?.id
+            };
+
+            sqlx::query!(
+                r#"
+                INSERT INTO groups_common_labels (group_id, common_label_id) VALUES ($1, $2)
+                "#,
+                group_id,
+                common_label_id
+            ).execute(&mut *tx).await.map_err(|error| InternalPushError::CommonLabelAssignment{
+                group_key: alertmanager_push.group_key.clone(),
+                label_name: common_label_name.clone(),
+                label_value: common_label_value.clone(),
+                error
+            })?;
+        }
+
+        for (common_annotation_name, common_annotation_value)  in alertmanager_push.common_annotations.iter() {
+            let common_annotation_id_opt = sqlx::query!(
+                r#"
+                SELECT id FROM common_annotations WHERE name = $1 AND value = $2
+                "#,
+                common_annotation_name,
+                common_annotation_value
+            ).fetch_optional(&mut *tx).await.map_err(|error| InternalPushError::CommonAnnotationId{
+                group_key: alertmanager_push.group_key.clone(),
+                annotation_name: common_annotation_name.clone(),
+                annotation_value: common_annotation_value.clone(),
+                error
+            })?.map(|row| row.id);
+
+            let common_annotation_id = match common_annotation_id_opt {
+                Some(annotation_id) => {
+                    tracing::trace!(
+                        name = %common_annotation_name,
+                        value = %common_annotation_value,
+                        "Common annotation already exists."
+                    );
+                    annotation_id
+                }
+                None => sqlx::query!(
+                    r#"
+                    INSERT INTO common_annotations (name, value) VALUES ($1, $2) RETURNING id
+                    "#,
+                    common_annotation_name,
+                    common_annotation_value
+                ).fetch_one(&mut *tx).await.map_err(|error| InternalPushError::CommonAnnotationInsertion{
+                    group_key: alertmanager_push.group_key.clone(),
+                    annotation_name: common_annotation_name.clone(),
+                    annotation_value: common_annotation_value.clone(),
+                    error
+                })?.id
+            };
+
+            sqlx::query!(
+                r#"
+                INSERT INTO groups_common_annotations (group_id, common_annotation_id) VALUES ($1, $2)
+                "#,
+                group_id,
+                common_annotation_id
+            ).execute(&mut *tx).await.map_err(|error| InternalPushError::CommonAnnotationAssignment{
+                group_key: alertmanager_push.group_key.clone(),
+                annotation_name: common_annotation_name.clone(),
+                annotation_value: common_annotation_value.clone(),
+                error
+            })?;
+        }
+
+        tx.commit().await.map_err(InternalPushError::TransactionCommit)?;
 
         // this will stay here for a while
         // let s: Result<i32, sqlx::Error> = conn.transaction(|txn| {
@@ -183,6 +328,7 @@ impl Pull for PostgresXPlugin {
 #[cfg(test)]
 mod test {
     use super::*;
+    use models::utils::generate_random_alertmanager_pushes;
     use tracing_test::traced_test;
 
     async fn create_plugin() -> PostgresXPlugin {
@@ -204,6 +350,19 @@ mod test {
 
     #[tokio::test]
     #[traced_test]
+    async fn push_random_alerts() {
+        let plugin = create_plugin().await;
+        let pushes = generate_random_alertmanager_pushes(100);
+        for (i, push) in pushes.iter().enumerate() {
+            tracing::info!("Pushing alert {}/{}", i + 1, pushes.len());
+            if let Err(error) = plugin.push_alert(push).await {
+                eprintln!("Failed to push alert: {:?}", error)
+            }
+        }
+    }
+
+    #[tokio::test]
+    #[traced_test]
     async fn pull_alerts() {
         let plugin = create_plugin().await;
         let filter = PullAlertsFilter {};
@@ -212,10 +371,10 @@ mod test {
             .await
             .expect("Failed to get all alerts.");
 
-        let alerts = &alerts[0..15];
-
-        for alert in alerts.iter() {
+        for alert in alerts.iter().take(10) {
             println!("{:#?}", alert);
         }
+
+        println!("Total pulled: {}", alerts.len());
     }
 }
