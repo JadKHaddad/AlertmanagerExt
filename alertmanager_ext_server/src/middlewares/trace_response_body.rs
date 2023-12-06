@@ -2,7 +2,6 @@ use crate::error_response::ErrorResponse;
 use axum::{http::Request, middleware::Next, response::IntoResponse};
 
 /// Middlware to trace the response body
-#[tracing::instrument(skip(req, next))]
 pub async fn trace_response_body<B>(
     req: Request<B>,
     next: Next<B>,
