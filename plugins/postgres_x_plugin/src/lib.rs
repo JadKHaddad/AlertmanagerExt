@@ -113,12 +113,20 @@ impl Push for PostgresXPlugin {
         })?;
 
         let status = AlertStatusModel::from(&alertmanager_push.status);
-        let group_id = sqlx::query!(r#"INSERT INTO groups (group_key, receiver, status , external_url) VALUES ($1, $2, $3, $4) RETURNING id"#, alertmanager_push.group_key, alertmanager_push.receiver, status as AlertStatusModel, alertmanager_push.external_url)
-                    .fetch_one(&mut *tx)
-                    .await.map_err(|error| PushError {
-                        reason: error.to_string(),
-                    })
-                    ?.id;
+        let group_id = sqlx::query!(
+            r#"
+            INSERT INTO groups (group_key, receiver, status, external_url) VALUES ($1, $2, $3, $4) RETURNING id
+            "#, 
+            alertmanager_push.group_key, 
+            alertmanager_push.receiver, 
+            status as AlertStatusModel, 
+            alertmanager_push.external_url
+        )
+        .fetch_one(&mut *tx)
+        .await.map_err(|error| PushError {
+            reason: error.to_string(),
+        })
+        ?.id;
 
         dbg!(group_id);
 
