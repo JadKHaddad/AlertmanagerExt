@@ -3,9 +3,11 @@ use async_trait::async_trait;
 use database::models::{
     alert_status::AlertStatusModel, alerts::DatabaseAlert, annotations::Annotation, labels::Label,
 };
-use models::StandAloneAlert;
+use models::{AlertmanagerPush, StandAloneAlert};
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use pull_definitions::{Pull, PullAlertsFilter, PullError};
+use push_definitions::{InitializeError, Push, PushError};
+use sqlx::postgres::any::AnyConnectionBackend;
 
 mod database;
 
@@ -68,11 +70,41 @@ impl Plugin for PostgresXPlugin {
     async fn health(&self) -> Result<(), HealthError> {
         tracing::trace!("Checking health.");
 
-        let _ = self.pool.acquire().await.map_err(|error| HealthError {
+        let mut conn = self.pool.acquire().await.map_err(|error| HealthError {
+            reason: error.to_string(),
+        })?;
+
+        conn.ping().await.map_err(|error| HealthError {
             reason: error.to_string(),
         })?;
 
         tracing::trace!("Successfully checked health.");
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Push for PostgresXPlugin {
+    #[tracing::instrument(name = "push_initialize", skip(self), fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
+    async fn initialize(&mut self) -> Result<(), InitializeError> {
+        tracing::trace!("Initializing.");
+
+        // TODO
+        tracing::warn!("Not implemented yet.");
+        let _ = self.config.take();
+
+        tracing::trace!("Successfully initialized.");
+        Ok(())
+    }
+
+    #[tracing::instrument(name = "push_alert", skip_all, fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
+    async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError> {
+        tracing::trace!("Pushing.");
+
+        // TODO
+        tracing::warn!("Not implemented yet.");
+
+        tracing::trace!("Successfully pushed.");
         Ok(())
     }
 }

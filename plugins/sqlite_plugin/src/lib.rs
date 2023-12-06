@@ -69,6 +69,7 @@ impl Plugin for SqlitePlugin {
     #[tracing::instrument(name = "health", skip(self), fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
     async fn health(&self) -> Result<(), HealthError> {
         tracing::trace!("Checking health.");
+
         let _conn = self.pool.get().await.map_err(|error| HealthError {
             reason: error.to_string(),
         })?;
@@ -118,6 +119,7 @@ impl Push for SqlitePlugin {
     async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
 
+        // TODO
         tracing::warn!("Not implemented yet.");
 
         tracing::trace!("Successfully pushed.");

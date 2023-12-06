@@ -181,12 +181,16 @@ impl Plugin for MongoPlugin {
 
     #[tracing::instrument(name = "health", skip(self), fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
     async fn health(&self) -> Result<(), HealthError> {
+        tracing::trace!("Checking health.");
+
         self.database()
             .run_command(doc! { "ping": 1 }, None)
             .await
             .map_err(|error| HealthError {
                 reason: error.to_string(),
             })?;
+
+        tracing::trace!("Successfully checked health.");
 
         Ok(())
     }
@@ -197,6 +201,9 @@ impl Push for MongoPlugin {
     #[tracing::instrument(name = "push_initialize", skip(self), fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
     async fn initialize(&mut self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
+
+        // TODO
+        tracing::warn!("Not implemented yet.");
         let _ = self.config.take();
 
         tracing::trace!("Successfully initialized.");
