@@ -149,7 +149,7 @@ pub async fn run() -> AnyResult<()> {
                 )),
         );
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 5050));
 
     tracing::info!(%addr, "Starting server.");
 

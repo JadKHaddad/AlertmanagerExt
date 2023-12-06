@@ -772,6 +772,7 @@ impl PostgresPlugin {
 #[cfg(test)]
 mod test {
     use super::*;
+
     use models::utils::generate_random_alertmanager_pushes;
     use tracing_test::traced_test;
 
@@ -801,9 +802,10 @@ mod test {
 
     #[tokio::test]
     #[traced_test]
+    // cargo test --package postgres_plugin --lib --release -- test::push_random_alerts --exact --nocapture
     async fn push_random_alerts() {
         let plugin = create_and_init_plugin().await;
-        let pushes = generate_random_alertmanager_pushes(100);
+        let pushes = generate_random_alertmanager_pushes(200);
         for (i, push) in pushes.iter().enumerate() {
             tracing::info!("Pushing alert {}/{}", i + 1, pushes.len());
             if let Err(error) = plugin.push_alert(push).await {
@@ -814,6 +816,7 @@ mod test {
 
     #[tokio::test]
     #[traced_test]
+    // cargo test --package postgres_plugin --lib --release -- test::pull_alerts --exact --nocapture
     async fn pull_alerts() {
         let plugin = create_and_init_plugin().await;
         let filter = PullAlertsFilter {};
