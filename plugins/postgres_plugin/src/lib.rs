@@ -793,6 +793,7 @@ mod test {
         postgres_plugin
     }
 
+    #[ignore]
     #[tokio::test]
     #[traced_test]
     // cargo test --package postgres_plugin --lib --release -- test::push_random_alerts --exact --nocapture
@@ -807,6 +808,7 @@ mod test {
         }
     }
 
+    #[ignore]
     #[tokio::test]
     #[traced_test]
     // cargo test --package postgres_plugin --lib --release -- test::pull_alerts --exact --nocapture

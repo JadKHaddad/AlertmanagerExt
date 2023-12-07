@@ -1,8 +1,9 @@
 use crate::{
     extractors::{json::ApiJson, query::ApiQuery},
     prometheus_client::PushLabel,
+    routes::utils,
     state::ApiState,
-    traits::{HasStatusCode, PushAndPlugin}, routes::utils,
+    traits::{HasStatusCode, PushAndPlugin},
 };
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use models::AlertmanagerPush;
@@ -188,13 +189,13 @@ async fn push_async(
 
 /// Push alerts to all plugins asynchronously
 #[utoipa::path(
-    post, 
+    post,
     path = "/push", 
     tag = "push",
     params(
         PluginFilterQuery
     ),
-    request_body = AlermanagerPush, 
+    request_body = AlermanagerPush,
     responses(
         (status = 202, description = "Push was successful.", body = PushResponse),
         (status = 207, description = "Some pushes were successful.", body = PushResponse),

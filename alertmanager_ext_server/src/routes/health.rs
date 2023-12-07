@@ -30,7 +30,7 @@ impl IntoResponse for ServerHealthResponse {
 
 /// Health check for the server
 #[utoipa::path(
-    get, 
+    get,
     path = "/health", 
     tag = "health", 
     responses(
@@ -134,7 +134,7 @@ async fn match_plugin_health(plugin: &Arc<dyn PushAndPlugin>) -> PlugingHealthRe
 
 /// Health check for plugins
 #[utoipa::path(
-    get, 
+    get,
     path = "/plugin_health", 
     tag = "health", 
     params(

@@ -33,7 +33,7 @@ pub struct PostgresXPluginMeta {
 }
 
 /// PostgresX plugin
-/// 
+///
 /// Based on [`sqlx`]
 pub struct PostgresXPlugin {
     /// Meta information for the plugin
@@ -51,28 +51,29 @@ impl PostgresXPlugin {
             .await
             .context("Failed to create pool")?;
 
-        Ok(Self {
-            meta,
-            pool,
-        })
+        Ok(Self { meta, pool })
     }
 
-    fn filter_already_exists_error(result: Result<sqlx::postgres::PgQueryResult,  sqlx::Error>) -> Result<(), sqlx::Error> {
+    fn filter_already_exists_error(
+        result: Result<sqlx::postgres::PgQueryResult, sqlx::Error>,
+    ) -> Result<(), sqlx::Error> {
         match result {
             Ok(_) => Ok(()),
             Err(error) => match error {
                 sqlx::Error::Database(ref database_error) => {
-                    if [Some(std::borrow::Cow::Borrowed("42710")) , Some(std::borrow::Cow::Borrowed("42P07"))].contains(&database_error.code()) {
+                    if [
+                        Some(std::borrow::Cow::Borrowed("42710")),
+                        Some(std::borrow::Cow::Borrowed("42P07")),
+                    ]
+                    .contains(&database_error.code())
+                    {
                         return Ok(());
                     }
-                    
-                    Err(error)
 
-                }
-                error => {
                     Err(error)
                 }
-            }
+                error => Err(error),
+            },
         }
     }
 }
@@ -110,14 +111,22 @@ impl Push for PostgresXPlugin {
     async fn initialize(&mut self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
 
-        let result = self.pool.execute(include_str!("../queries/initialize/01_alert_status.sql")).await;
+        let result = self
+            .pool
+            .execute(include_str!("../queries/initialize/01_alert_status.sql"))
+            .await;
         Self::filter_already_exists_error(result).map_err(|error| InitializeError {
             reason: error.to_string(),
         })?;
 
-        self.pool.execute(include_str!("../queries/initialize/02_after_alert_status.sql")).await.map_err(|error| InitializeError {
-            reason: error.to_string(),
-        })?;
+        self.pool
+            .execute(include_str!(
+                "../queries/initialize/02_after_alert_status.sql"
+            ))
+            .await
+            .map_err(|error| InitializeError {
+                reason: error.to_string(),
+            })?;
 
         tracing::trace!("Successfully initialized.");
         Ok(())
@@ -127,19 +136,26 @@ impl Push for PostgresXPlugin {
     async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
 
-        let mut conn = self.pool.acquire().await.map_err(InternalPushError::Acquire)?;
+        let mut conn = self
+            .pool
+            .acquire()
+            .await
+            .map_err(InternalPushError::Acquire)?;
 
         tracing::trace!("Starting transaction.");
-        let mut tx = conn.begin().await.map_err(InternalPushError::TransactionStart)?;
+        let mut tx = conn
+            .begin()
+            .await
+            .map_err(InternalPushError::TransactionStart)?;
 
         let status = AlertStatusModel::from(&alertmanager_push.status);
         let group_id = sqlx::query!(
             r#"
             INSERT INTO groups (group_key, receiver, status, external_url) VALUES ($1, $2, $3, $4) RETURNING id
             "#, 
-            alertmanager_push.group_key, 
-            alertmanager_push.receiver, 
-            status as AlertStatusModel, 
+            alertmanager_push.group_key,
+            alertmanager_push.receiver,
+            status as AlertStatusModel,
             alertmanager_push.external_url
         )
         .fetch_one(&mut *tx)
@@ -149,19 +165,23 @@ impl Push for PostgresXPlugin {
         })?
         .id;
 
-        for (label_name, label_value)  in alertmanager_push.group_labels.iter() {
+        for (label_name, label_value) in alertmanager_push.group_labels.iter() {
             let label_id_opt = sqlx::query!(
                 r#"
                 SELECT id FROM labels WHERE name = $1 AND value = $2
                 "#,
                 label_name,
                 label_value
-            ).fetch_optional(&mut *tx).await.map_err(|error| InternalPushError::GroupLabelId{
+            )
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|error| InternalPushError::GroupLabelId {
                 group_key: alertmanager_push.group_key.clone(),
                 label_name: label_name.clone(),
                 label_value: label_value.clone(),
-                error
-            })?.map(|row| row.id);
+                error,
+            })?
+            .map(|row| row.id);
 
             let label_id = match label_id_opt {
                 Some(label_id) => {
@@ -172,18 +192,24 @@ impl Push for PostgresXPlugin {
                     );
                     label_id
                 }
-                None => sqlx::query!(
-                    r#"
+                None => {
+                    sqlx::query!(
+                        r#"
                     INSERT INTO labels (name, value) VALUES ($1, $2) RETURNING id
                     "#,
-                    label_name,
-                    label_value
-                ).fetch_one(&mut *tx).await.map_err(|error| InternalPushError::GroupLabelInsertion{
-                    group_key: alertmanager_push.group_key.clone(),
-                    label_name: label_name.clone(),
-                    label_value: label_value.clone(),
-                    error
-                })?.id
+                        label_name,
+                        label_value
+                    )
+                    .fetch_one(&mut *tx)
+                    .await
+                    .map_err(|error| InternalPushError::GroupLabelInsertion {
+                        group_key: alertmanager_push.group_key.clone(),
+                        label_name: label_name.clone(),
+                        label_value: label_value.clone(),
+                        error,
+                    })?
+                    .id
+                }
             };
 
             sqlx::query!(
@@ -192,27 +218,34 @@ impl Push for PostgresXPlugin {
                 "#,
                 group_id,
                 label_id
-            ).execute(&mut *tx).await.map_err(|error| InternalPushError::GroupLabelAssignment{
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(|error| InternalPushError::GroupLabelAssignment {
                 group_key: alertmanager_push.group_key.clone(),
                 label_name: label_name.clone(),
                 label_value: label_value.clone(),
-                error
+                error,
             })?;
         }
 
-        for (common_label_name, common_label_value)  in alertmanager_push.common_labels.iter() {
+        for (common_label_name, common_label_value) in alertmanager_push.common_labels.iter() {
             let common_label_id_opt = sqlx::query!(
                 r#"
                 SELECT id FROM common_labels WHERE name = $1 AND value = $2
                 "#,
                 common_label_name,
                 common_label_value
-            ).fetch_optional(&mut *tx).await.map_err(|error| InternalPushError::CommonLabelId{
+            )
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|error| InternalPushError::CommonLabelId {
                 group_key: alertmanager_push.group_key.clone(),
                 label_name: common_label_name.clone(),
                 label_value: common_label_value.clone(),
-                error
-            })?.map(|row| row.id);
+                error,
+            })?
+            .map(|row| row.id);
 
             let common_label_id = match common_label_id_opt {
                 Some(label_id) => {
@@ -223,18 +256,24 @@ impl Push for PostgresXPlugin {
                     );
                     label_id
                 }
-                None => sqlx::query!(
-                    r#"
+                None => {
+                    sqlx::query!(
+                        r#"
                     INSERT INTO common_labels (name, value) VALUES ($1, $2) RETURNING id
                     "#,
-                    common_label_name,
-                    common_label_value
-                ).fetch_one(&mut *tx).await.map_err(|error| InternalPushError::CommonLabelInsertion{
-                    group_key: alertmanager_push.group_key.clone(),
-                    label_name: common_label_name.clone(),
-                    label_value: common_label_value.clone(),
-                    error
-                })?.id
+                        common_label_name,
+                        common_label_value
+                    )
+                    .fetch_one(&mut *tx)
+                    .await
+                    .map_err(|error| InternalPushError::CommonLabelInsertion {
+                        group_key: alertmanager_push.group_key.clone(),
+                        label_name: common_label_name.clone(),
+                        label_value: common_label_value.clone(),
+                        error,
+                    })?
+                    .id
+                }
             };
 
             sqlx::query!(
@@ -243,27 +282,36 @@ impl Push for PostgresXPlugin {
                 "#,
                 group_id,
                 common_label_id
-            ).execute(&mut *tx).await.map_err(|error| InternalPushError::CommonLabelAssignment{
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(|error| InternalPushError::CommonLabelAssignment {
                 group_key: alertmanager_push.group_key.clone(),
                 label_name: common_label_name.clone(),
                 label_value: common_label_value.clone(),
-                error
+                error,
             })?;
         }
 
-        for (common_annotation_name, common_annotation_value)  in alertmanager_push.common_annotations.iter() {
+        for (common_annotation_name, common_annotation_value) in
+            alertmanager_push.common_annotations.iter()
+        {
             let common_annotation_id_opt = sqlx::query!(
                 r#"
                 SELECT id FROM common_annotations WHERE name = $1 AND value = $2
                 "#,
                 common_annotation_name,
                 common_annotation_value
-            ).fetch_optional(&mut *tx).await.map_err(|error| InternalPushError::CommonAnnotationId{
+            )
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|error| InternalPushError::CommonAnnotationId {
                 group_key: alertmanager_push.group_key.clone(),
                 annotation_name: common_annotation_name.clone(),
                 annotation_value: common_annotation_value.clone(),
-                error
-            })?.map(|row| row.id);
+                error,
+            })?
+            .map(|row| row.id);
 
             let common_annotation_id = match common_annotation_id_opt {
                 Some(annotation_id) => {
@@ -274,18 +322,24 @@ impl Push for PostgresXPlugin {
                     );
                     annotation_id
                 }
-                None => sqlx::query!(
-                    r#"
+                None => {
+                    sqlx::query!(
+                        r#"
                     INSERT INTO common_annotations (name, value) VALUES ($1, $2) RETURNING id
                     "#,
-                    common_annotation_name,
-                    common_annotation_value
-                ).fetch_one(&mut *tx).await.map_err(|error| InternalPushError::CommonAnnotationInsertion{
-                    group_key: alertmanager_push.group_key.clone(),
-                    annotation_name: common_annotation_name.clone(),
-                    annotation_value: common_annotation_value.clone(),
-                    error
-                })?.id
+                        common_annotation_name,
+                        common_annotation_value
+                    )
+                    .fetch_one(&mut *tx)
+                    .await
+                    .map_err(|error| InternalPushError::CommonAnnotationInsertion {
+                        group_key: alertmanager_push.group_key.clone(),
+                        annotation_name: common_annotation_name.clone(),
+                        annotation_value: common_annotation_value.clone(),
+                        error,
+                    })?
+                    .id
+                }
             };
 
             sqlx::query!(
@@ -331,13 +385,17 @@ impl Push for PostgresXPlugin {
                     "#,
                     label_name,
                     label_value
-                ).fetch_optional(&mut *tx).await.map_err(|error| InternalPushError::AlertLabelId{
+                )
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|error| InternalPushError::AlertLabelId {
                     group_key: alertmanager_push.group_key.clone(),
                     fingerprint: alert.fingerprint.clone(),
                     label_name: label_name.clone(),
                     label_value: label_value.clone(),
-                    error
-                })?.map(|row| row.id);
+                    error,
+                })?
+                .map(|row| row.id);
 
                 let label_id = match label_id_opt {
                     Some(label_id) => {
@@ -348,19 +406,25 @@ impl Push for PostgresXPlugin {
                         );
                         label_id
                     }
-                    None => sqlx::query!(
-                        r#"
+                    None => {
+                        sqlx::query!(
+                            r#"
                         INSERT INTO labels (name, value) VALUES ($1, $2) RETURNING id
                         "#,
-                        label_name,
-                        label_value
-                    ).fetch_one(&mut *tx).await.map_err(|error| InternalPushError::AlertLabelInsertion{
-                        group_key: alertmanager_push.group_key.clone(),
-                        fingerprint: alert.fingerprint.clone(),
-                        label_name: label_name.clone(),
-                        label_value: label_value.clone(),
-                        error
-                    })?.id
+                            label_name,
+                            label_value
+                        )
+                        .fetch_one(&mut *tx)
+                        .await
+                        .map_err(|error| InternalPushError::AlertLabelInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            fingerprint: alert.fingerprint.clone(),
+                            label_name: label_name.clone(),
+                            label_value: label_value.clone(),
+                            error,
+                        })?
+                        .id
+                    }
                 };
 
                 sqlx::query!(
@@ -369,12 +433,15 @@ impl Push for PostgresXPlugin {
                     "#,
                     alert_id,
                     label_id
-                ).execute(&mut *tx).await.map_err(|error| InternalPushError::AlertLabelAssignment{
+                )
+                .execute(&mut *tx)
+                .await
+                .map_err(|error| InternalPushError::AlertLabelAssignment {
                     group_key: alertmanager_push.group_key.clone(),
                     fingerprint: alert.fingerprint.clone(),
                     label_name: label_name.clone(),
                     label_value: label_value.clone(),
-                    error
+                    error,
                 })?;
             }
 
@@ -385,13 +452,17 @@ impl Push for PostgresXPlugin {
                     "#,
                     annotation_name,
                     annotation_value
-                ).fetch_optional(&mut *tx).await.map_err(|error| InternalPushError::AlertAnnotationId{
+                )
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|error| InternalPushError::AlertAnnotationId {
                     group_key: alertmanager_push.group_key.clone(),
                     fingerprint: alert.fingerprint.clone(),
                     annotation_name: annotation_name.clone(),
                     annotation_value: annotation_value.clone(),
-                    error
-                })?.map(|row| row.id);
+                    error,
+                })?
+                .map(|row| row.id);
 
                 let annotation_id = match annotation_id_opt {
                     Some(annotation_id) => {
@@ -402,19 +473,25 @@ impl Push for PostgresXPlugin {
                         );
                         annotation_id
                     }
-                    None => sqlx::query!(
-                        r#"
+                    None => {
+                        sqlx::query!(
+                            r#"
                         INSERT INTO annotations (name, value) VALUES ($1, $2) RETURNING id
                         "#,
-                        annotation_name,
-                        annotation_value
-                    ).fetch_one(&mut *tx).await.map_err(|error| InternalPushError::AlertAnnotationInsertion{
-                        group_key: alertmanager_push.group_key.clone(),
-                        fingerprint: alert.fingerprint.clone(),
-                        annotation_name: annotation_name.clone(),
-                        annotation_value: annotation_value.clone(),
-                        error
-                    })?.id
+                            annotation_name,
+                            annotation_value
+                        )
+                        .fetch_one(&mut *tx)
+                        .await
+                        .map_err(|error| InternalPushError::AlertAnnotationInsertion {
+                            group_key: alertmanager_push.group_key.clone(),
+                            fingerprint: alert.fingerprint.clone(),
+                            annotation_name: annotation_name.clone(),
+                            annotation_value: annotation_value.clone(),
+                            error,
+                        })?
+                        .id
+                    }
                 };
 
                 sqlx::query!(
@@ -423,18 +500,23 @@ impl Push for PostgresXPlugin {
                     "#,
                     alert_id,
                     annotation_id
-                ).execute(&mut *tx).await.map_err(|error| InternalPushError::AlertAnnotationAssignment{
+                )
+                .execute(&mut *tx)
+                .await
+                .map_err(|error| InternalPushError::AlertAnnotationAssignment {
                     group_key: alertmanager_push.group_key.clone(),
                     fingerprint: alert.fingerprint.clone(),
                     annotation_name: annotation_name.clone(),
                     annotation_value: annotation_value.clone(),
-                    error
+                    error,
                 })?;
             }
         }
 
         tracing::trace!("Committing transaction.");
-        tx.commit().await.map_err(InternalPushError::TransactionCommit)?;
+        tx.commit()
+            .await
+            .map_err(InternalPushError::TransactionCommit)?;
 
         tracing::trace!("Successfully pushed.");
         Ok(())
@@ -472,7 +554,7 @@ mod test {
     use models::utils::generate_random_alertmanager_pushes;
     use tracing_test::traced_test;
 
-    async fn create_plugin() -> PostgresXPlugin {
+    async fn create_and_init_plugin() -> PostgresXPlugin {
         dotenv::dotenv().ok();
         let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
@@ -487,23 +569,25 @@ mod test {
             group: String::from("default"),
         };
 
-        PostgresXPlugin::new(postgres_x_plugin_meta, postgres_x_plugin_config)
+        let mut postgres_x_plugin =
+            PostgresXPlugin::new(postgres_x_plugin_meta, postgres_x_plugin_config)
+                .await
+                .expect("Failed to create Postgres plugin.");
+
+        postgres_x_plugin
+            .initialize()
             .await
-            .expect("Failed to create Postgres plugin.")
+            .expect("Failed to initialize Postgres plugin.");
+
+        postgres_x_plugin
     }
 
-    #[tokio::test]
-    #[traced_test]
-    async fn initialize() {
-        let mut plugin = create_plugin().await;
-        plugin.initialize().await.expect("Failed to initialize plugin.");
-    }
-
+    #[ignore]
     #[tokio::test]
     #[traced_test]
     // cargo test --package postgres_x_plugin --lib --release -- test::push_random_alerts --exact --nocapture
     async fn push_random_alerts() {
-        let plugin = create_plugin().await;
+        let plugin = create_and_init_plugin().await;
         let pushes = generate_random_alertmanager_pushes(100);
         for (i, push) in pushes.iter().enumerate() {
             tracing::info!("Pushing alert {}/{}", i + 1, pushes.len());
@@ -513,11 +597,12 @@ mod test {
         }
     }
 
+    #[ignore]
     #[tokio::test]
     #[traced_test]
     // cargo test --package postgres_x_plugin --lib --release -- test::pull_alerts --exact --nocapture
     async fn pull_alerts() {
-        let plugin = create_plugin().await;
+        let plugin = create_and_init_plugin().await;
         let filter = PullAlertsFilter {};
         let alerts = plugin
             .pull_alerts(&filter)
