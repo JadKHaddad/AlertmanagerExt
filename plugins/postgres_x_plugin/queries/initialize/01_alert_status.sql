@@ -1,0 +1,1 @@
+CREATE TYPE alert_status AS ENUM ('resolved', 'firing');

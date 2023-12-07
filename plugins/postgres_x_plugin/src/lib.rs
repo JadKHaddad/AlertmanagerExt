@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use database::models::{
     alert_status::AlertStatusModel, alerts::DatabaseAlert, annotations::Annotation, labels::Label,
 };
+use error::InternalInitializeError;
 use models::{AlertmanagerPush, StandAloneAlert};
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use pull_definitions::{Pull, PullAlertsFilter, PullError};
@@ -59,6 +60,66 @@ impl PostgresXPlugin {
             pool,
         })
     }
+
+    fn filter_already_exists_error(resource: &str, result: Result<sqlx::postgres::PgQueryResult,  sqlx::Error>) -> Result<(), sqlx::Error> {
+        match result {
+            Ok(_) => Ok(()),
+            Err(error) => match error {
+                sqlx::Error::Database(ref database_error) => {
+                    if [Some(std::borrow::Cow::Borrowed("42710")) , Some(std::borrow::Cow::Borrowed("42P07"))].contains(&database_error.code()) {
+                        tracing::trace!(resource = %resource, "Already exists.");
+                        return Ok(());
+                    }
+                    
+                    Err(error)
+
+                }
+                error => {
+                    Err(error)
+                }
+            }
+        }
+    }
+
+    async fn initialize_with_internal_initialize_error(&self) -> Result<(), InternalInitializeError> {
+        let result = sqlx::query(include_str!("../queries/initialize/01_alert_status.sql")).execute(&self.pool).await;
+        Self::filter_already_exists_error("alert_status",result).map_err(InternalInitializeError::AlertStatus)?;
+
+        let result = sqlx::query(include_str!("../queries/initialize/02_groups.sql")).execute(&self.pool).await;
+        Self::filter_already_exists_error("groups", result).map_err(InternalInitializeError::Groups)?;
+
+        let result = sqlx::query(include_str!("../queries/initialize/03_alerts.sql")).execute(&self.pool).await;
+        Self::filter_already_exists_error("alerts", result).map_err(InternalInitializeError::Alerts)?;
+
+        let result = sqlx::query(include_str!("../queries/initialize/04_labels.sql")).execute(&self.pool).await;
+        Self::filter_already_exists_error("labels", result).map_err(InternalInitializeError::Labels)?;
+
+        let result = sqlx::query(include_str!("../queries/initialize/05_annotations.sql")).execute(&self.pool).await;
+        Self::filter_already_exists_error("annotations", result).map_err(InternalInitializeError::Annotations)?;
+
+        let result = sqlx::query(include_str!("../queries/initialize/06_common_labels.sql")).execute(&self.pool).await;
+        Self::filter_already_exists_error("common_labels", result).map_err(InternalInitializeError::CommonLabels)?;
+
+        let result = sqlx::query(include_str!("../queries/initialize/07_common_annotations.sql")).execute(&self.pool).await;
+        Self::filter_already_exists_error("common_annotations", result).map_err(InternalInitializeError::CommonAnnotations)?;
+
+        let result = sqlx::query(include_str!("../queries/initialize/08_groups_labels.sql")).execute(&self.pool).await;
+        Self::filter_already_exists_error("groups_labels", result).map_err(InternalInitializeError::GroupsLabels)?;
+
+        let result = sqlx::query(include_str!("../queries/initialize/09_groups_common_labels.sql")).execute(&self.pool).await;
+        Self::filter_already_exists_error("groups_common_labels", result).map_err(InternalInitializeError::GroupsCommonLabels)?;
+
+        let result = sqlx::query(include_str!("../queries/initialize/10_groups_common_annotations.sql")).execute(&self.pool).await;
+        Self::filter_already_exists_error("groups_common_annotations", result).map_err(InternalInitializeError::GroupsCommonAnnotations)?;
+
+        let result = sqlx::query(include_str!("../queries/initialize/11_alerts_labels.sql")).execute(&self.pool).await;
+        Self::filter_already_exists_error("alerts_labels", result).map_err(InternalInitializeError::AlertsLabels)?;
+
+        let result = sqlx::query(include_str!("../queries/initialize/12_alerts_annotations.sql")).execute(&self.pool).await;
+        Self::filter_already_exists_error("alerts_annotations", result).map_err(InternalInitializeError::AlertsAnnotations)?;
+
+        Ok(())
+    } 
 }
 
 #[async_trait]
@@ -95,8 +156,9 @@ impl Push for PostgresXPlugin {
         tracing::trace!("Initializing.");
 
         // TODO
-        tracing::warn!("Not implemented yet.");
         let _ = self.config.take();
+
+        self.initialize_with_internal_initialize_error().await?;
 
         tracing::trace!("Successfully initialized.");
         Ok(())
@@ -467,6 +529,13 @@ mod test {
         PostgresXPlugin::new(postgres_x_plugin_meta, postgres_x_plugin_config)
             .await
             .expect("Failed to create Postgres plugin.")
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn initialize() {
+        let mut plugin = create_plugin().await;
+        plugin.initialize().await.expect("Failed to initialize plugin.");
     }
 
     #[tokio::test]
