@@ -65,12 +65,12 @@ pub async fn run() -> AnyResult<()> {
     let mut postgres_x_plugin =
         PostgresXPlugin::new(postgres_x_plugin_meta, postgres_x_plugin_config)
             .await
-            .context("Failed to create Postgres plugin")?;
+            .context("Failed to create PostgresX plugin")?;
 
     postgres_x_plugin
         .initialize()
         .await
-        .context("Failed to initialize Postgres plugin")?;
+        .context("Failed to initialize PostgresX plugin")?;
 
     let sqlite_plugin_config = SqlitePluginConfig {
         database_url: String::from("file:alertmanager_ext_server/db/sqlite.db"),

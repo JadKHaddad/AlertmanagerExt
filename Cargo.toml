@@ -1,7 +1,6 @@
 [workspace]
-
 resolver = "2"
-
+default-members = ["alertmanager_ext_server"]
 members = [
     "models",
     "push/push_definitions",
