@@ -34,7 +34,7 @@ pub struct PostgresXPluginMeta {
 
 /// PostgresX plugin
 ///
-/// Based on [`sqlx`]
+/// Based on [`sqlx`].
 pub struct PostgresXPlugin {
     /// Meta information for the plugin
     meta: PostgresXPluginMeta,
@@ -572,12 +572,12 @@ mod test {
         let mut postgres_x_plugin =
             PostgresXPlugin::new(postgres_x_plugin_meta, postgres_x_plugin_config)
                 .await
-                .expect("Failed to create Postgres plugin.");
+                .expect("Failed to create PostgresX plugin.");
 
         postgres_x_plugin
             .initialize()
             .await
-            .expect("Failed to initialize Postgres plugin.");
+            .expect("Failed to initialize PostgresX plugin.");
 
         postgres_x_plugin
     }

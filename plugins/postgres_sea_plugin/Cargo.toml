@@ -6,3 +6,16 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+push_definitions = { path = "../../push/push_definitions" }
+pull_definitions = { path = "../../pull/pull_definitions" }
+plugins_definitions = { path = "../plugins_definitions" }
+models = { path = "../../models" }
+postgres_sea_plugin_migration = { path = "migration" }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-test = { workspace = true }
+thiserror = { workspace = true }
+dotenv = { workspace = true }
+sea-orm = { version = "0.12" }

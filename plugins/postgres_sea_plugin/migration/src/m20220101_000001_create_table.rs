@@ -2,7 +2,7 @@ use sea_orm::{EnumIter, Iterable};
 use sea_orm_migration::{prelude::*, sea_query::extension::postgres::Type};
 
 #[derive(Iden, EnumIter)]
-pub enum AlertStatus {
+enum AlertStatus {
     Table,
     #[iden = "resolved"]
     Resolved,
