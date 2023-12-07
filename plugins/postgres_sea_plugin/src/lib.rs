@@ -4,10 +4,19 @@ use migration::{Migrator, MigratorTrait};
 use models::AlertmanagerPush;
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use push_definitions::{InitializeError, Push, PushError};
-use sea_orm::{ConnectOptions, Database, DatabaseConnection};
+use sea_orm::{
+    ActiveModelTrait, ConnectOptions, Database, DatabaseConnection, Set, TransactionTrait,
+};
+
+use crate::{
+    entity::{groups, sea_orm_active_enums::AlertStatus},
+    error::InternalPushError,
+};
 
 #[allow(clippy::enum_variant_names)]
 mod entity;
+mod entity_ext;
+mod error;
 
 /// Configuration for the PostgresSea plugin
 pub struct PostgresSeaPluginConfig {
@@ -97,8 +106,32 @@ impl Push for PostgresSeaPlugin {
     async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
 
-        // TODO
-        tracing::warn!("Not implemented.");
+        tracing::trace!("Beginning transaction.");
+        let txn = self
+            .db
+            .begin()
+            .await
+            .map_err(InternalPushError::TransactionBegin)?;
+
+        let group_id = groups::ActiveModel {
+            group_key: Set(alertmanager_push.group_key.clone()),
+            receiver: Set(alertmanager_push.receiver.clone()),
+            status: Set(AlertStatus::from(&alertmanager_push.status)),
+            external_url: Set(alertmanager_push.external_url.clone()),
+            ..Default::default()
+        }
+        .save(&txn)
+        .await
+        .map_err(|error| InternalPushError::GroupInsertion {
+            group_key: alertmanager_push.group_key.clone(),
+            error,
+        })?
+        .id;
+
+        tracing::trace!("Committing transaction.");
+        txn.commit()
+            .await
+            .map_err(InternalPushError::TransactionCommit)?;
 
         tracing::trace!("Successfully pushed.");
         Ok(())
@@ -109,6 +142,7 @@ impl Push for PostgresSeaPlugin {
 mod test {
     use super::*;
 
+    use models::utils::generate_random_alertmanager_pushes;
     use tracing_test::traced_test;
 
     async fn create_and_init_plugin() -> PostgresSeaPlugin {
@@ -144,5 +178,20 @@ mod test {
     #[traced_test]
     async fn initialize() {
         let _ = create_and_init_plugin().await;
+    }
+
+    #[ignore]
+    #[tokio::test]
+    #[traced_test]
+    // cargo test --package postgres_sea_plugin --lib --release -- test::push_random_alerts --exact --nocapture
+    async fn push_random_alerts() {
+        let plugin = create_and_init_plugin().await;
+        let pushes = generate_random_alertmanager_pushes(100);
+        for (i, push) in pushes.iter().enumerate() {
+            tracing::info!("Pushing alert {}/{}", i + 1, pushes.len());
+            if let Err(error) = plugin.push_alert(push).await {
+                eprintln!("Failed to push alert: {:?}", error)
+            }
+        }
     }
 }

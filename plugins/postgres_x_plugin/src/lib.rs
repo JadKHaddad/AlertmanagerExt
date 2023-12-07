@@ -142,11 +142,11 @@ impl Push for PostgresXPlugin {
             .await
             .map_err(InternalPushError::Acquire)?;
 
-        tracing::trace!("Starting transaction.");
+        tracing::trace!("Beginning transaction.");
         let mut tx = conn
             .begin()
             .await
-            .map_err(InternalPushError::TransactionStart)?;
+            .map_err(InternalPushError::TransactionBegin)?;
 
         let status = AlertStatusModel::from(&alertmanager_push.status);
         let group_id = sqlx::query!(

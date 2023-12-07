@@ -720,7 +720,7 @@ impl Push for PostgresPlugin {
 
         conn.transaction::<(), InternalPushError, _>(|conn| {
             async move {
-                tracing::trace!("Starting transaction.");
+                tracing::trace!("Beginning transaction.");
 
                 let group_id = Self::insert_group(conn, alertmanager_push).await?;
                 Self::insert_group_lables(conn, group_id, alertmanager_push).await?;
