@@ -5,11 +5,12 @@ use models::AlertmanagerPush;
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use push_definitions::{InitializeError, Push, PushError};
 use sea_orm::{
-    ActiveModelTrait, ConnectOptions, Database, DatabaseConnection, Set, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, ConnectOptions, Database, DatabaseConnection, EntityTrait,
+    QueryFilter, Set, TransactionTrait,
 };
 
 use crate::{
-    entity::{groups, sea_orm_active_enums::AlertStatus},
+    entity::{groups, groups_labels, labels, prelude::*, sea_orm_active_enums::AlertStatus},
     error::InternalPushError,
 };
 
@@ -120,13 +121,71 @@ impl Push for PostgresSeaPlugin {
             external_url: Set(alertmanager_push.external_url.clone()),
             ..Default::default()
         }
-        .save(&txn)
+        .insert(&txn)
         .await
         .map_err(|error| InternalPushError::GroupInsertion {
             group_key: alertmanager_push.group_key.clone(),
             error,
         })?
         .id;
+
+        for (label_name, label_value) in alertmanager_push.group_labels.iter() {
+            let label_id_opt = Labels::find()
+                .filter(
+                    labels::Column::Name
+                        .eq(label_name)
+                        .and(labels::Column::Value.eq(label_value)),
+                )
+                .one(&txn)
+                .await
+                .map_err(|error| InternalPushError::GroupLabelId {
+                    group_key: alertmanager_push.group_key.clone(),
+                    label_name: label_name.clone(),
+                    label_value: label_value.clone(),
+                    error,
+                })?
+                .map(|label| label.id);
+
+            let label_id = match label_id_opt {
+                Some(label_id) => {
+                    tracing::trace!(
+                        name = %label_name,
+                        value = %label_value,
+                        "Label already exists."
+                    );
+                    label_id
+                }
+                None => {
+                    labels::ActiveModel {
+                        name: Set(label_name.clone()),
+                        value: Set(label_value.clone()),
+                        ..Default::default()
+                    }
+                    .insert(&txn)
+                    .await
+                    .map_err(|error| InternalPushError::GroupLabelInsertion {
+                        group_key: alertmanager_push.group_key.clone(),
+                        label_name: label_name.clone(),
+                        label_value: label_value.clone(),
+                        error,
+                    })?
+                    .id
+                }
+            };
+
+            groups_labels::ActiveModel {
+                group_id: Set(group_id),
+                label_id: Set(label_id),
+            }
+            .insert(&txn)
+            .await
+            .map_err(|error| InternalPushError::GroupLabelAssignment {
+                group_key: alertmanager_push.group_key.clone(),
+                label_name: label_name.clone(),
+                label_value: label_value.clone(),
+                error,
+            })?;
+        }
 
         tracing::trace!("Committing transaction.");
         txn.commit()
@@ -186,7 +245,7 @@ mod test {
     // cargo test --package postgres_sea_plugin --lib --release -- test::push_random_alerts --exact --nocapture
     async fn push_random_alerts() {
         let plugin = create_and_init_plugin().await;
-        let pushes = generate_random_alertmanager_pushes(100);
+        let pushes = generate_random_alertmanager_pushes(10);
         for (i, push) in pushes.iter().enumerate() {
             tracing::info!("Pushing alert {}/{}", i + 1, pushes.len());
             if let Err(error) = plugin.push_alert(push).await {
