@@ -85,6 +85,7 @@ pub fn generate_random_alertmanager_pushes(n: usize) -> Vec<AlertmanagerPush> {
 mod tests {
     use super::*;
 
+    #[ignore]
     #[test]
     fn print_random_alertmanager_pushes() {
         let alertmanager_push = generate_random_alertmanager_pushes(10);
