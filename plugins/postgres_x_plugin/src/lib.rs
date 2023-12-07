@@ -33,6 +33,8 @@ pub struct PostgresXPluginMeta {
 }
 
 /// PostgresX plugin
+/// 
+/// Based on [`sqlx`]
 pub struct PostgresXPlugin {
     /// Meta information for the plugin
     meta: PostgresXPluginMeta,
@@ -450,7 +452,7 @@ mod test {
     async fn create_plugin() -> PostgresXPlugin {
         dotenv::dotenv().ok();
         let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        
+
         let postgres_x_plugin_config = PostgresXPluginConfig {
             connection_string: database_url,
             max_connections: 15,
