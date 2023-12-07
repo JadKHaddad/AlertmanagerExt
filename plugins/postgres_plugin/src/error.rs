@@ -1,8 +1,14 @@
+use bb8::RunError;
 use diesel::result::Error as DieselError;
+use diesel_async::pooled_connection::PoolError;
+use pull_definitions::PullError;
+use push_definitions::PushError;
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
 pub enum InternalPushError {
+    #[error("Error getting connection from pool: {0}")]
+    Acquire(#[source] RunError<PoolError>),
     #[error("Transaction error: {0}")]
     Transaction(
         #[source]
@@ -152,6 +158,14 @@ pub enum InternalPushError {
     },
 }
 
+impl From<InternalPushError> for PushError {
+    fn from(error: InternalPushError) -> Self {
+        Self {
+            reason: error.to_string(),
+        }
+    }
+}
+
 #[derive(ThisError, Debug)]
 /// Error inserting a label
 ///
@@ -162,4 +176,24 @@ pub enum LablelInsertionError {
     Get(#[source] DieselError),
     #[error("Insert error: {0}")]
     Insert(#[source] DieselError),
+}
+
+#[derive(ThisError, Debug)]
+pub enum InternalPullError {
+    #[error("Error getting connection from pool: {0}")]
+    Acquire(#[source] RunError<PoolError>),
+    #[error("Error getting alerts: {0}")]
+    Alerts(#[source] DieselError),
+    #[error("Error getting labels: {0}")]
+    Labels(#[source] DieselError),
+    #[error("Error getting annotations: {0}")]
+    Annotations(#[source] DieselError),
+}
+
+impl From<InternalPullError> for PullError {
+    fn from(error: InternalPullError) -> Self {
+        Self {
+            reason: error.to_string(),
+        }
+    }
 }

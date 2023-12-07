@@ -24,6 +24,7 @@ use diesel_async::{
     RunQueryDsl,
 };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use error::InternalPullError;
 use models::{Alert as AlertmanagerPushAlert, AlertmanagerPush, StandAloneAlert};
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use pull_definitions::{Pull, PullAlertsFilter, PullError};
@@ -587,6 +588,69 @@ impl PostgresPlugin {
 
         Ok(())
     }
+
+    async fn pull_alerts_with_internal_pull_error(
+        conn: &mut AsyncPgConnection,
+        filter: &PullAlertsFilter,
+    ) -> Result<Vec<StandAloneAlert>, InternalPullError> {
+        let alerts: Vec<Alert> = database::schema::alerts::table
+            .select(Alert::as_select())
+            .load(conn)
+            .await
+            .map_err(InternalPullError::Alerts)?;
+
+        let labels: Vec<(AlertLabel, Label)> = AlertLabel::belonging_to(&alerts)
+            .inner_join(database::schema::labels::table)
+            .select((AlertLabel::as_select(), Label::as_select()))
+            .load(conn)
+            .await
+            .map_err(InternalPullError::Labels)?;
+
+        let annotations: Vec<(AlertAnnotation, Annotation)> =
+            AlertAnnotation::belonging_to(&alerts)
+                .inner_join(database::schema::annotations::table)
+                .select((AlertAnnotation::as_select(), Annotation::as_select()))
+                .load(conn)
+                .await
+                .map_err(InternalPullError::Annotations)?;
+
+        let labels_per_alert: Vec<(&Alert, Vec<Label>)> = labels
+            .grouped_by(&alerts)
+            .into_iter()
+            .zip(&alerts)
+            .map(|(labels, alert)| (alert, labels.into_iter().map(|(_, label)| label).collect()))
+            .collect();
+
+        let annotations_per_alert: Vec<(&Alert, Vec<Annotation>)> = annotations
+            .grouped_by(&alerts)
+            .into_iter()
+            .zip(&alerts)
+            .map(|(annotations, alert)| {
+                (
+                    alert,
+                    annotations
+                        .into_iter()
+                        .map(|(_, annotation)| annotation)
+                        .collect(),
+                )
+            })
+            .collect();
+
+        let database_alerts: Vec<DatabaseAlert> = labels_per_alert
+            .into_iter()
+            .zip(annotations_per_alert)
+            .map(|((alert, labels), (_, annotations))| DatabaseAlert {
+                alert: alert.clone(),
+                labels,
+                annotations,
+            })
+            .collect();
+
+        Ok(database_alerts
+            .into_iter()
+            .map(|alert| alert.into())
+            .collect())
+    }
 }
 
 #[async_trait]
@@ -652,9 +716,7 @@ impl Push for PostgresPlugin {
     async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError> {
         tracing::trace!("Pushing.");
 
-        let mut conn = self.pool.get().await.map_err(|error| PushError {
-            reason: error.to_string(),
-        })?;
+        let mut conn = self.pool.get().await.map_err(InternalPushError::Acquire)?;
 
         conn.transaction::<(), InternalPushError, _>(|conn| {
             async move {
@@ -672,10 +734,7 @@ impl Push for PostgresPlugin {
             }
             .scope_boxed()
         })
-        .await
-        .map_err(|error| PushError {
-            reason: error.to_string(),
-        })?;
+        .await?;
 
         tracing::trace!("Successfully pushed.");
         Ok(())
@@ -690,82 +749,13 @@ impl Pull for PostgresPlugin {
         filter: &PullAlertsFilter,
     ) -> Result<Vec<StandAloneAlert>, PullError> {
         tracing::trace!("Pulling.");
-        let mut conn = self.pool.get().await.map_err(|error| PullError {
-            reason: error.to_string(),
-        })?;
 
-        let alerts = Self::pull_alerts_with_diesel_error(&mut conn, filter)
-            .await
-            .map_err(|error| PullError {
-                reason: error.to_string(),
-            })?;
+        let mut conn = self.pool.get().await.map_err(InternalPullError::Acquire)?;
+
+        let alerts = Self::pull_alerts_with_internal_pull_error(&mut conn, filter).await?;
 
         tracing::trace!("Successfully pulled.");
         Ok(alerts)
-    }
-}
-
-use diesel::result::Error as DieselError;
-impl PostgresPlugin {
-    // we can apply some filters here!
-    async fn pull_alerts_with_diesel_error(
-        conn: &mut AsyncPgConnection,
-        filter: &PullAlertsFilter,
-    ) -> Result<Vec<StandAloneAlert>, DieselError> {
-        let alerts: Vec<Alert> = database::schema::alerts::table
-            .select(Alert::as_select())
-            .load(conn)
-            .await?;
-
-        let labels: Vec<(AlertLabel, Label)> = AlertLabel::belonging_to(&alerts)
-            .inner_join(database::schema::labels::table)
-            .select((AlertLabel::as_select(), Label::as_select()))
-            .load(conn)
-            .await?;
-
-        let annotations: Vec<(AlertAnnotation, Annotation)> =
-            AlertAnnotation::belonging_to(&alerts)
-                .inner_join(database::schema::annotations::table)
-                .select((AlertAnnotation::as_select(), Annotation::as_select()))
-                .load(conn)
-                .await?;
-
-        let labels_per_alert: Vec<(&Alert, Vec<Label>)> = labels
-            .grouped_by(&alerts)
-            .into_iter()
-            .zip(&alerts)
-            .map(|(labels, alert)| (alert, labels.into_iter().map(|(_, label)| label).collect()))
-            .collect();
-
-        let annotations_per_alert: Vec<(&Alert, Vec<Annotation>)> = annotations
-            .grouped_by(&alerts)
-            .into_iter()
-            .zip(&alerts)
-            .map(|(annotations, alert)| {
-                (
-                    alert,
-                    annotations
-                        .into_iter()
-                        .map(|(_, annotation)| annotation)
-                        .collect(),
-                )
-            })
-            .collect();
-
-        let database_alerts: Vec<DatabaseAlert> = labels_per_alert
-            .into_iter()
-            .zip(annotations_per_alert)
-            .map(|((alert, labels), (_, annotations))| DatabaseAlert {
-                alert: alert.clone(),
-                labels,
-                annotations,
-            })
-            .collect();
-
-        Ok(database_alerts
-            .into_iter()
-            .map(|alert| alert.into())
-            .collect())
     }
 }
 
