@@ -8,7 +8,7 @@ mod impls;
 
 pub(crate) const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
-pub(crate) type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
+type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
 
 /// Configuration for the Postgres plugin
 pub struct PostgresPluginConfig {
