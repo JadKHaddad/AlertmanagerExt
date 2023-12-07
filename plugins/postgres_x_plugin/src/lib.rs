@@ -293,28 +293,123 @@ impl Push for PostgresXPlugin {
                 alert.fingerprint
             )
             .fetch_one(&mut *tx)
-            .await.map_err(|error| InternalPushError::GroupInsertion{
+            .await.map_err(|error| InternalPushError::AlertInsertion{
                 group_key: alertmanager_push.group_key.clone(),
+                fingerprint: alert.fingerprint.clone(),
                 error
             })?
             .id;
+
+            for (label_name, label_value) in alert.labels.iter() {
+                let label_id_opt = sqlx::query!(
+                    r#"
+                    SELECT id FROM labels WHERE name = $1 AND value = $2
+                    "#,
+                    label_name,
+                    label_value
+                ).fetch_optional(&mut *tx).await.map_err(|error| InternalPushError::AlertLabelId{
+                    group_key: alertmanager_push.group_key.clone(),
+                    fingerprint: alert.fingerprint.clone(),
+                    label_name: label_name.clone(),
+                    label_value: label_value.clone(),
+                    error
+                })?.map(|row| row.id);
+
+                let label_id = match label_id_opt {
+                    Some(label_id) => {
+                        tracing::trace!(
+                            name = %label_name,
+                            value = %label_value,
+                            "Label already exists."
+                        );
+                        label_id
+                    }
+                    None => sqlx::query!(
+                        r#"
+                        INSERT INTO labels (name, value) VALUES ($1, $2) RETURNING id
+                        "#,
+                        label_name,
+                        label_value
+                    ).fetch_one(&mut *tx).await.map_err(|error| InternalPushError::AlertLabelInsertion{
+                        group_key: alertmanager_push.group_key.clone(),
+                        fingerprint: alert.fingerprint.clone(),
+                        label_name: label_name.clone(),
+                        label_value: label_value.clone(),
+                        error
+                    })?.id
+                };
+
+                sqlx::query!(
+                    r#"
+                    INSERT INTO alerts_labels (alert_id, label_id) VALUES ($1, $2)
+                    "#,
+                    alert_id,
+                    label_id
+                ).execute(&mut *tx).await.map_err(|error| InternalPushError::AlertLabelAssignment{
+                    group_key: alertmanager_push.group_key.clone(),
+                    fingerprint: alert.fingerprint.clone(),
+                    label_name: label_name.clone(),
+                    label_value: label_value.clone(),
+                    error
+                })?;
+            }
+
+            for (annotation_name, annotation_value) in alert.annotations.iter() {
+                let annotation_id_opt = sqlx::query!(
+                    r#"
+                    SELECT id FROM annotations WHERE name = $1 AND value = $2
+                    "#,
+                    annotation_name,
+                    annotation_value
+                ).fetch_optional(&mut *tx).await.map_err(|error| InternalPushError::AlertAnnotationId{
+                    group_key: alertmanager_push.group_key.clone(),
+                    fingerprint: alert.fingerprint.clone(),
+                    annotation_name: annotation_name.clone(),
+                    annotation_value: annotation_value.clone(),
+                    error
+                })?.map(|row| row.id);
+
+                let annotation_id = match annotation_id_opt {
+                    Some(annotation_id) => {
+                        tracing::trace!(
+                            name = %annotation_name,
+                            value = %annotation_value,
+                            "Annotation already exists."
+                        );
+                        annotation_id
+                    }
+                    None => sqlx::query!(
+                        r#"
+                        INSERT INTO annotations (name, value) VALUES ($1, $2) RETURNING id
+                        "#,
+                        annotation_name,
+                        annotation_value
+                    ).fetch_one(&mut *tx).await.map_err(|error| InternalPushError::AlertAnnotationInsertion{
+                        group_key: alertmanager_push.group_key.clone(),
+                        fingerprint: alert.fingerprint.clone(),
+                        annotation_name: annotation_name.clone(),
+                        annotation_value: annotation_value.clone(),
+                        error
+                    })?.id
+                };
+
+                sqlx::query!(
+                    r#"
+                    INSERT INTO alerts_annotations (alert_id, annotation_id) VALUES ($1, $2)
+                    "#,
+                    alert_id,
+                    annotation_id
+                ).execute(&mut *tx).await.map_err(|error| InternalPushError::AlertAnnotationAssignment{
+                    group_key: alertmanager_push.group_key.clone(),
+                    fingerprint: alert.fingerprint.clone(),
+                    annotation_name: annotation_name.clone(),
+                    annotation_value: annotation_value.clone(),
+                    error
+                })?;
+            }
         }
 
         tx.commit().await.map_err(InternalPushError::TransactionCommit)?;
-
-        // this will stay here for a while
-        // let s: Result<i32, sqlx::Error> = conn.transaction(|txn| {
-        //     Box::pin(async move {
-        //         let status = AlertStatusModel::from(&alertmanager_push.status);
-        //         let group_id = sqlx::query!(r#"INSERT INTO groups (group_key, receiver, status , external_url) VALUES ($1, $2, $3, $4) RETURNING id"#, alertmanager_push.group_key, alertmanager_push.receiver, status as AlertStatusModel, alertmanager_push.external_url)
-        //             .fetch_one(&mut **txn)
-        //             .await
-        //             ?
-        //             .id;
-        //         Ok(group_id)
-        //     })
-        // })
-        // .await;
 
         tracing::trace!("Successfully pushed.");
         Ok(())
@@ -353,8 +448,11 @@ mod test {
     use tracing_test::traced_test;
 
     async fn create_plugin() -> PostgresXPlugin {
+        dotenv::dotenv().ok();
+        let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+        
         let postgres_x_plugin_config = PostgresXPluginConfig {
-            connection_string: String::from("postgres://user:password@localhost:5432/database"),
+            connection_string: database_url,
             max_connections: 15,
             connection_timeout: std::time::Duration::from_secs(5),
         };

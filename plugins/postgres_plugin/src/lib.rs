@@ -767,8 +767,11 @@ mod test {
     use tracing_test::traced_test;
 
     async fn create_and_init_plugin() -> PostgresPlugin {
+        dotenv::dotenv().ok();
+        let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
         let postgres_plugin_config = PostgresPluginConfig {
-            connection_string: String::from("postgres://user:password@localhost:5432/database"),
+            connection_string: database_url,
             max_connections: 15,
             connection_timeout: std::time::Duration::from_secs(5),
         };
