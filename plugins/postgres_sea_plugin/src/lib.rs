@@ -1,10 +1,10 @@
-use anyhow::Result as AnyResult;
+use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
 use migration::{Migrator, MigratorTrait};
 use models::AlertmanagerPush;
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use push_definitions::{InitializeError, Push, PushError};
-use sea_orm::{ConnectOptions, Database};
+use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 
 #[allow(clippy::enum_variant_names)]
 mod entity;
@@ -13,6 +13,10 @@ mod entity;
 pub struct PostgresSeaPluginConfig {
     /// Connection string for the Postgres database
     pub connection_string: String,
+    /// Max number of connections in the pool
+    pub max_connections: u32,
+    /// Connection timeout
+    pub connection_timeout: std::time::Duration,
 }
 
 /// Metadata for the PostgresSea plugin
@@ -29,8 +33,8 @@ pub struct PostgresSeaPluginMeta {
 pub struct PostgresSeaPlugin {
     /// Meta information for the plugin
     meta: PostgresSeaPluginMeta,
-    /// Configuration for the plugin
-    config: Option<Box<PostgresSeaPluginConfig>>,
+    /// Connection to the database
+    db: DatabaseConnection,
 }
 
 impl PostgresSeaPlugin {
@@ -38,10 +42,16 @@ impl PostgresSeaPlugin {
         meta: PostgresSeaPluginMeta,
         config: PostgresSeaPluginConfig,
     ) -> AnyResult<Self> {
-        Ok(Self {
-            meta,
-            config: Some(Box::new(config)),
-        })
+        let connect_options = ConnectOptions::new(&config.connection_string)
+            .max_connections(config.max_connections)
+            .connect_timeout(config.connection_timeout)
+            .to_owned();
+
+        let db = Database::connect(connect_options)
+            .await
+            .context("Failed to connect to database")?;
+
+        Ok(Self { meta, db })
     }
 }
 
@@ -73,21 +83,7 @@ impl Push for PostgresSeaPlugin {
     async fn initialize(&mut self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
 
-        let config = self.config.take().ok_or_else(|| InitializeError {
-            reason: "Already initialized.".to_string(),
-        })?;
-
-        let connection_string = config.connection_string;
-
-        let connect_options = ConnectOptions::new(connection_string).to_owned();
-
-        let db = Database::connect(connect_options)
-            .await
-            .map_err(|error| InitializeError {
-                reason: error.to_string(),
-            })?;
-
-        Migrator::up(&db, None)
+        Migrator::up(&self.db, None)
             .await
             .map_err(|error| InitializeError {
                 reason: error.to_string(),
@@ -121,6 +117,8 @@ mod test {
 
         let postgres_sea_plugin_config = PostgresSeaPluginConfig {
             connection_string: database_url,
+            max_connections: 5,
+            connection_timeout: std::time::Duration::from_secs(5),
         };
 
         let postgres_sea_plugin_meta = PostgresSeaPluginMeta {
