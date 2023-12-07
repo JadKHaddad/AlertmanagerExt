@@ -5,7 +5,7 @@ async fn main() -> AnyResult<()> {
     if std::env::var_os("RUST_LOG").is_none() {
         std::env::set_var(
             "RUST_LOG",
-            "alertmanager_ext_server=trace,alertmanager_ext_server::extractors=trace,alertmanager_ext_server::middlewares::trace_response_body=trace,postgres_plugin=trace,sqlite_plugin=trace,file_plugin=trace,print_plugin=trace,tower_http=trace",
+            "alertmanager_ext_server=trace,alertmanager_ext_server::extractors=trace,alertmanager_ext_server::middlewares::trace_response_body=trace,postgres_plugin=trace,postgres_x_plugin=trace,sqlite_plugin=trace,file_plugin=trace,print_plugin=trace,tower_http=trace",
         );
     }
 

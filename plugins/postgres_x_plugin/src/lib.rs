@@ -3,12 +3,11 @@ use async_trait::async_trait;
 use database::models::{
     alert_status::AlertStatusModel, alerts::DatabaseAlert, annotations::Annotation, labels::Label,
 };
-use error::InternalInitializeError;
 use models::{AlertmanagerPush, StandAloneAlert};
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use pull_definitions::{Pull, PullAlertsFilter, PullError};
 use push_definitions::{InitializeError, Push, PushError};
-use sqlx::Connection;
+use sqlx::{Connection, Executor};
 
 use crate::error::InternalPushError;
 
@@ -39,8 +38,6 @@ pub struct PostgresXPluginMeta {
 pub struct PostgresXPlugin {
     /// Meta information for the plugin
     meta: PostgresXPluginMeta,
-    /// Configuration for the plugin
-    config: Option<Box<PostgresXPluginConfig>>,
     /// Pool of connections to the database
     pool: sqlx::Pool<sqlx::Postgres>,
 }
@@ -56,18 +53,16 @@ impl PostgresXPlugin {
 
         Ok(Self {
             meta,
-            config: Some(Box::new(config)),
             pool,
         })
     }
 
-    fn filter_already_exists_error(resource: &str, result: Result<sqlx::postgres::PgQueryResult,  sqlx::Error>) -> Result<(), sqlx::Error> {
+    fn filter_already_exists_error(result: Result<sqlx::postgres::PgQueryResult,  sqlx::Error>) -> Result<(), sqlx::Error> {
         match result {
             Ok(_) => Ok(()),
             Err(error) => match error {
                 sqlx::Error::Database(ref database_error) => {
                     if [Some(std::borrow::Cow::Borrowed("42710")) , Some(std::borrow::Cow::Borrowed("42P07"))].contains(&database_error.code()) {
-                        tracing::trace!(resource = %resource, "Already exists.");
                         return Ok(());
                     }
                     
@@ -80,46 +75,6 @@ impl PostgresXPlugin {
             }
         }
     }
-
-    async fn initialize_with_internal_initialize_error(&self) -> Result<(), InternalInitializeError> {
-        let result = sqlx::query(include_str!("../queries/initialize/01_alert_status.sql")).execute(&self.pool).await;
-        Self::filter_already_exists_error("alert_status",result).map_err(InternalInitializeError::AlertStatus)?;
-
-        let result = sqlx::query(include_str!("../queries/initialize/02_groups.sql")).execute(&self.pool).await;
-        Self::filter_already_exists_error("groups", result).map_err(InternalInitializeError::Groups)?;
-
-        let result = sqlx::query(include_str!("../queries/initialize/03_alerts.sql")).execute(&self.pool).await;
-        Self::filter_already_exists_error("alerts", result).map_err(InternalInitializeError::Alerts)?;
-
-        let result = sqlx::query(include_str!("../queries/initialize/04_labels.sql")).execute(&self.pool).await;
-        Self::filter_already_exists_error("labels", result).map_err(InternalInitializeError::Labels)?;
-
-        let result = sqlx::query(include_str!("../queries/initialize/05_annotations.sql")).execute(&self.pool).await;
-        Self::filter_already_exists_error("annotations", result).map_err(InternalInitializeError::Annotations)?;
-
-        let result = sqlx::query(include_str!("../queries/initialize/06_common_labels.sql")).execute(&self.pool).await;
-        Self::filter_already_exists_error("common_labels", result).map_err(InternalInitializeError::CommonLabels)?;
-
-        let result = sqlx::query(include_str!("../queries/initialize/07_common_annotations.sql")).execute(&self.pool).await;
-        Self::filter_already_exists_error("common_annotations", result).map_err(InternalInitializeError::CommonAnnotations)?;
-
-        let result = sqlx::query(include_str!("../queries/initialize/08_groups_labels.sql")).execute(&self.pool).await;
-        Self::filter_already_exists_error("groups_labels", result).map_err(InternalInitializeError::GroupsLabels)?;
-
-        let result = sqlx::query(include_str!("../queries/initialize/09_groups_common_labels.sql")).execute(&self.pool).await;
-        Self::filter_already_exists_error("groups_common_labels", result).map_err(InternalInitializeError::GroupsCommonLabels)?;
-
-        let result = sqlx::query(include_str!("../queries/initialize/10_groups_common_annotations.sql")).execute(&self.pool).await;
-        Self::filter_already_exists_error("groups_common_annotations", result).map_err(InternalInitializeError::GroupsCommonAnnotations)?;
-
-        let result = sqlx::query(include_str!("../queries/initialize/11_alerts_labels.sql")).execute(&self.pool).await;
-        Self::filter_already_exists_error("alerts_labels", result).map_err(InternalInitializeError::AlertsLabels)?;
-
-        let result = sqlx::query(include_str!("../queries/initialize/12_alerts_annotations.sql")).execute(&self.pool).await;
-        Self::filter_already_exists_error("alerts_annotations", result).map_err(InternalInitializeError::AlertsAnnotations)?;
-
-        Ok(())
-    } 
 }
 
 #[async_trait]
@@ -155,10 +110,14 @@ impl Push for PostgresXPlugin {
     async fn initialize(&mut self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
 
-        // TODO
-        let _ = self.config.take();
+        let result = self.pool.execute(include_str!("../queries/initialize/01_alert_status.sql")).await;
+        Self::filter_already_exists_error(result).map_err(|error| InitializeError {
+            reason: error.to_string(),
+        })?;
 
-        self.initialize_with_internal_initialize_error().await?;
+        self.pool.execute(include_str!("../queries/initialize/02_after_alert_status.sql")).await.map_err(|error| InitializeError {
+            reason: error.to_string(),
+        })?;
 
         tracing::trace!("Successfully initialized.");
         Ok(())
@@ -170,6 +129,7 @@ impl Push for PostgresXPlugin {
 
         let mut conn = self.pool.acquire().await.map_err(InternalPushError::Acquire)?;
 
+        tracing::trace!("Starting transaction.");
         let mut tx = conn.begin().await.map_err(InternalPushError::TransactionStart)?;
 
         let status = AlertStatusModel::from(&alertmanager_push.status);
@@ -473,6 +433,7 @@ impl Push for PostgresXPlugin {
             }
         }
 
+        tracing::trace!("Committing transaction.");
         tx.commit().await.map_err(InternalPushError::TransactionCommit)?;
 
         tracing::trace!("Successfully pushed.");

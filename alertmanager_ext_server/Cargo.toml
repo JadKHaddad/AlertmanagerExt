@@ -10,6 +10,7 @@ models = { path = "../models" }
 push_definitions = { path = "../push/push_definitions" }
 plugins_definitions = { path = "../plugins/plugins_definitions" }
 postgres_plugin = { path = "../plugins/postgres_plugin" }
+postgres_x_plugin = { path = "../plugins/postgres_x_plugin" }
 mongo_plugin = { path = "../plugins/mongo_plugin" }
 sqlite_plugin = { path = "../plugins/sqlite_plugin" }
 file_plugin = { path = "../plugins/file_plugin" }

@@ -10,6 +10,7 @@ use axum::{
 };
 use file_plugin::FilePluginMeta;
 use postgres_plugin::{PostgresPlugin, PostgresPluginConfig, PostgresPluginMeta};
+use postgres_x_plugin::{PostgresXPlugin, PostgresXPluginConfig, PostgresXPluginMeta};
 use push_definitions::Push;
 use sqlite_plugin::{SqlitePlugin, SqlitePluginConfig, SqlitePluginMeta};
 use std::{net::SocketAddr, sync::Arc};
@@ -46,6 +47,27 @@ pub async fn run() -> AnyResult<()> {
         .context("Failed to create Postgres plugin")?;
 
     postgres_plugin
+        .initialize()
+        .await
+        .context("Failed to initialize Postgres plugin")?;
+
+    let postgres_x_plugin_config = PostgresXPluginConfig {
+        connection_string: String::from("postgres://user:password@localhost:5433/database"),
+        max_connections: 15,
+        connection_timeout: std::time::Duration::from_secs(5),
+    };
+
+    let postgres_x_plugin_meta = PostgresXPluginMeta {
+        name: String::from("postgres_x_plugin_1"),
+        group: String::from("default"),
+    };
+
+    let mut postgres_x_plugin =
+        PostgresXPlugin::new(postgres_x_plugin_meta, postgres_x_plugin_config)
+            .await
+            .context("Failed to create Postgres plugin")?;
+
+    postgres_x_plugin
         .initialize()
         .await
         .context("Failed to initialize Postgres plugin")?;
@@ -104,6 +126,7 @@ pub async fn run() -> AnyResult<()> {
     // Well because of Arc.
     let plugins: Vec<Arc<dyn PushAndPlugin>> = vec![
         Arc::new(postgres_plugin),
+        Arc::new(postgres_x_plugin),
         Arc::new(sqlite_plugin),
         Arc::new(file_plugin),
         Arc::new(print_plugin),

@@ -1,34 +1,6 @@
-use push_definitions::{InitializeError, PushError};
+use push_definitions::PushError;
 use sqlx::Error as SqlxError;
 use thiserror::Error as ThisError;
-
-#[derive(ThisError, Debug)]
-pub enum InternalInitializeError {
-    #[error("Failed to create alert_status type: {0}")]
-    AlertStatus(#[source] SqlxError),
-    #[error("Failed to create groups table: {0}")]
-    Groups(#[source] SqlxError),
-    #[error("Failed to create alerts table: {0}")]
-    Alerts(#[source] SqlxError),
-    #[error("Failed to create labels table: {0}")]
-    Labels(#[source] SqlxError),
-    #[error("Failed to create annotations table: {0}")]
-    Annotations(#[source] SqlxError),
-    #[error("Failed to create common_labels table: {0}")]
-    CommonLabels(#[source] SqlxError),
-    #[error("Failed to create common_annotations table: {0}")]
-    CommonAnnotations(#[source] SqlxError),
-    #[error("Failed to create groups_labels table: {0}")]
-    GroupsLabels(#[source] SqlxError),
-    #[error("Failed to create groups_common_labels table: {0}")]
-    GroupsCommonLabels(#[source] SqlxError),
-    #[error("Failed to create groups_common_annotations table: {0}")]
-    GroupsCommonAnnotations(#[source] SqlxError),
-    #[error("Failed to create alerts_labels table: {0}")]
-    AlertsLabels(#[source] SqlxError),
-    #[error("Failed to create alerts_annotations table: {0}")]
-    AlertsAnnotations(#[source] SqlxError),
-}
 
 #[derive(ThisError, Debug)]
 pub enum InternalPushError {
@@ -179,14 +151,6 @@ pub enum InternalPushError {
         #[source]
         error: SqlxError,
     },
-}
-
-impl From<InternalInitializeError> for InitializeError {
-    fn from(error: InternalInitializeError) -> Self {
-        Self {
-            reason: error.to_string(),
-        }
-    }
 }
 
 impl From<InternalPushError> for PushError {

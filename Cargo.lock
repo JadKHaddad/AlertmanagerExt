@@ -52,6 +52,7 @@ dependencies = [
  "mongo_plugin",
  "plugins_definitions",
  "postgres_plugin",
+ "postgres_x_plugin",
  "print_plugin",
  "prometheus-client",
  "push_definitions",
