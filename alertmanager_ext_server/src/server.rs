@@ -137,22 +137,24 @@ pub async fn run(config: crate::config::Config) -> AnyResult<()> {
         tracing::warn!("No plugins configured.");
     }
 
-    let mut plugin_names: HashSet<&str> = HashSet::new();
+    {
+        let mut plugin_names: HashSet<&str> = HashSet::new();
 
-    for plugin in &plugins {
-        let name = plugin.name();
-        if plugin_names.contains(name) {
-            tracing::warn!(name = name, "Duplicate plugin name.");
+        for plugin in &plugins {
+            let name = plugin.name();
+            if plugin_names.contains(name) {
+                tracing::warn!(name = name, "Duplicate plugin name.");
+            }
+
+            plugin_names.insert(name);
+
+            tracing::debug!(
+                name = %name,
+                type_ = %plugin.type_(),
+                group = %plugin.group(),
+                "Plugin ready."
+            );
         }
-
-        plugin_names.insert(name);
-
-        tracing::debug!(
-            name = %name,
-            type_ = %plugin.type_(),
-            group = %plugin.group(),
-            "Plugin ready."
-        );
     }
 
     let state = ApiState::new(plugins);

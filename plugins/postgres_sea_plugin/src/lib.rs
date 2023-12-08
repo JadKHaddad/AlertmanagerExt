@@ -95,17 +95,10 @@ mod test {
     #[ignore]
     #[tokio::test]
     #[traced_test]
-    async fn initialize() {
-        let _ = create_and_init_plugin().await;
-    }
-
-    #[ignore]
-    #[tokio::test]
-    #[traced_test]
     // cargo test --package postgres_sea_plugin --lib --release -- test::push_random_alerts --exact --nocapture
     async fn push_random_alerts() {
         let plugin = create_and_init_plugin().await;
-        let pushes = generate_random_alertmanager_pushes(10);
+        let pushes = generate_random_alertmanager_pushes(100);
         for (i, push) in pushes.iter().enumerate() {
             tracing::info!("Pushing alert {}/{}", i + 1, pushes.len());
             if let Err(error) = plugin.push_alert(push).await {
