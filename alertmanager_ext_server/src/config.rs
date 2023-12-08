@@ -1,10 +1,17 @@
 use file_plugin::{FilePluginConfig, FilePluginMeta};
 use mongo_plugin::{MongoPluginConfig, MongoPluginMeta};
 use postgres_plugin::{PostgresPluginConfig, PostgresPluginMeta};
+use postgres_sea_plugin::{PostgresSeaPluginConfig, PostgresSeaPluginMeta};
+use postgres_x_plugin::{PostgresXPluginConfig, PostgresXPluginMeta};
 use print_plugin::{PrintPluginConfig, PrintPluginMeta};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::{net::Ipv4Addr, path::Path, str::FromStr};
+use sqlite_plugin::{SqlitePluginConfig, SqlitePluginMeta};
+use std::{
+    net::{Ipv4Addr, SocketAddr},
+    path::Path,
+    str::FromStr,
+};
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
@@ -36,6 +43,13 @@ impl Config {
         let config = tokio::fs::read_to_string(path).await?;
         let config = serde_yaml::from_str::<Self>(&config)?;
         Ok(config)
+    }
+
+    pub fn addr(&self) -> SocketAddr {
+        SocketAddr::new(
+            Ipv4Addr::from(self.server.host.clone()).into(),
+            self.server.port,
+        )
     }
 }
 
@@ -114,14 +128,14 @@ pub struct PostgresPluginFromFileConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct PostgresSeaPluginFromFileConfig {
-    pub meta: PostgresPluginMeta,
-    pub config: PostgresPluginConfig,
+    pub meta: PostgresSeaPluginMeta,
+    pub config: PostgresSeaPluginConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct PostgresXPluginFromFileConfig {
-    pub meta: PostgresPluginMeta,
-    pub config: PostgresPluginConfig,
+    pub meta: PostgresXPluginMeta,
+    pub config: PostgresXPluginConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -131,7 +145,10 @@ pub struct PrintPluginFromFileConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct SqlitePluginFromFileConfig {}
+pub struct SqlitePluginFromFileConfig {
+    pub meta: SqlitePluginMeta,
+    pub config: SqlitePluginConfig,
+}
 
 #[cfg(test)]
 mod test {

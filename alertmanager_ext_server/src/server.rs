@@ -8,12 +8,14 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use file_plugin::FilePluginMeta;
-use postgres_plugin::{PostgresPlugin, PostgresPluginConfig, PostgresPluginMeta};
-use postgres_x_plugin::{PostgresXPlugin, PostgresXPluginConfig, PostgresXPluginMeta};
+use file_plugin::FilePlugin;
+use postgres_plugin::PostgresPlugin;
+use postgres_sea_plugin::PostgresSeaPlugin;
+use postgres_x_plugin::PostgresXPlugin;
+use print_plugin::PrintPlugin;
 use push_definitions::Push;
-use sqlite_plugin::{SqlitePlugin, SqlitePluginConfig, SqlitePluginMeta};
-use std::{net::SocketAddr, sync::Arc};
+use sqlite_plugin::SqlitePlugin;
+use std::{collections::HashSet, sync::Arc};
 use tower::ServiceBuilder;
 use tower_http::{
     cors::CorsLayer,
@@ -30,107 +32,128 @@ async fn not_found() -> ErrorResponse {
     ErrorResponse::not_found()
 }
 
-pub async fn run() -> AnyResult<()> {
-    let postgres_plugin_config = PostgresPluginConfig {
-        connection_string: String::from("postgres://user:password@localhost:5432/database"),
-        max_connections: 15,
-        connection_timeout: std::time::Duration::from_secs(5),
-    };
+pub async fn run(config: crate::config::Config) -> AnyResult<()> {
+    let addr = config.addr();
 
-    let postgres_plugin_meta = PostgresPluginMeta {
-        name: String::from("postgres_plugin_1"),
-        group: String::from("default"),
-    };
+    let mut plugins: Vec<Arc<dyn PushAndPlugin>> = vec![];
 
-    let mut postgres_plugin = PostgresPlugin::new(postgres_plugin_meta, postgres_plugin_config)
-        .await
-        .context("Failed to create Postgres plugin")?;
+    tracing::debug!("Creating plugins.");
+    if let Some(plugins_from_file) = config.plugins {
+        if let Some(file_plugins) = plugins_from_file.file_plugin {
+            for conf_file_plugin in file_plugins {
+                let mut file_plugin =
+                    FilePlugin::new(conf_file_plugin.meta, conf_file_plugin.config);
 
-    postgres_plugin
-        .initialize()
-        .await
-        .context("Failed to initialize Postgres plugin")?;
+                file_plugin
+                    .initialize()
+                    .await
+                    .context("Failed to initialize File plugin")?;
 
-    let postgres_x_plugin_config = PostgresXPluginConfig {
-        connection_string: String::from("postgres://user:password@localhost:5433/database"),
-        max_connections: 15,
-        connection_timeout: std::time::Duration::from_secs(5),
-    };
+                plugins.push(Arc::new(file_plugin));
+            }
+        }
 
-    let postgres_x_plugin_meta = PostgresXPluginMeta {
-        name: String::from("postgres_x_plugin_1"),
-        group: String::from("default"),
-    };
+        if let Some(postgres_plugins) = plugins_from_file.postgres_plugin {
+            for conf_postgres_plugin in postgres_plugins {
+                let mut postgres_plugin =
+                    PostgresPlugin::new(conf_postgres_plugin.meta, conf_postgres_plugin.config)
+                        .await
+                        .context("Failed to create Postgres plugin")?;
 
-    let mut postgres_x_plugin =
-        PostgresXPlugin::new(postgres_x_plugin_meta, postgres_x_plugin_config)
-            .await
-            .context("Failed to create PostgresX plugin")?;
+                postgres_plugin
+                    .initialize()
+                    .await
+                    .context("Failed to initialize Postgres plugin")?;
 
-    postgres_x_plugin
-        .initialize()
-        .await
-        .context("Failed to initialize PostgresX plugin")?;
+                plugins.push(Arc::new(postgres_plugin));
+            }
+        }
 
-    let sqlite_plugin_config = SqlitePluginConfig {
-        database_url: String::from("file:alertmanager_ext_server/db/sqlite.db"),
-    };
+        if let Some(postgres_sea_plugins) = plugins_from_file.postgres_sea_plugin {
+            for conf_postgres_sea_plugin in postgres_sea_plugins {
+                let mut postgres_sea_plugin = PostgresSeaPlugin::new(
+                    conf_postgres_sea_plugin.meta,
+                    conf_postgres_sea_plugin.config,
+                )
+                .await
+                .context("Failed to create PostgresSea plugin")?;
 
-    let sqlite_plugin_meta = SqlitePluginMeta {
-        name: String::from("sqlite_plugin_1"),
-        group: String::from("default"),
-    };
+                postgres_sea_plugin
+                    .initialize()
+                    .await
+                    .context("Failed to initialize PostgresSea plugin")?;
 
-    let mut sqlite_plugin = SqlitePlugin::new(sqlite_plugin_meta, sqlite_plugin_config)
-        .context("Failed to create SQLite plugin")?;
+                plugins.push(Arc::new(postgres_sea_plugin));
+            }
+        }
 
-    sqlite_plugin
-        .initialize()
-        .await
-        .context("Failed to initialize SQLite plugin")?;
+        if let Some(postgres_x_plugins) = plugins_from_file.postgres_x_plugin {
+            for conf_postgres_x_plugin in postgres_x_plugins {
+                let mut postgres_x_plugin = PostgresXPlugin::new(
+                    conf_postgres_x_plugin.meta,
+                    conf_postgres_x_plugin.config,
+                )
+                .await
+                .context("Failed to create PostgresX plugin")?;
 
-    let file_plugin_meta = FilePluginMeta {
-        name: String::from("file_plugin_1"),
-        group: String::from("default"),
-    };
+                postgres_x_plugin
+                    .initialize()
+                    .await
+                    .context("Failed to initialize PostgresX plugin")?;
 
-    let file_plugin_config = file_plugin::FilePluginConfig {
-        dir_path: std::path::PathBuf::from("alertmanager_ext_server/pushes"),
-        file_type: file_plugin::FileType::Json,
-    };
+                plugins.push(Arc::new(postgres_x_plugin));
+            }
+        }
 
-    let mut file_plugin = file_plugin::FilePlugin::new(file_plugin_meta, file_plugin_config);
+        if let Some(print_plugins) = plugins_from_file.print_plugin {
+            for conf_print_plugin in print_plugins {
+                let mut print_plugin =
+                    PrintPlugin::new(conf_print_plugin.meta, conf_print_plugin.config);
 
-    file_plugin
-        .initialize()
-        .await
-        .context("Failed to initialize File plugin")?;
+                print_plugin
+                    .initialize()
+                    .await
+                    .context("Failed to initialize Print plugin")?;
 
-    let print_plugin_meta = print_plugin::PrintPluginMeta {
-        name: String::from("print_plugin_1"),
-        group: String::from("default"),
-    };
+                plugins.push(Arc::new(print_plugin));
+            }
+        }
 
-    let print_plugin_config = print_plugin::PrintPluginConfig {
-        print_type: print_plugin::PrintType::Debug,
-    };
+        if let Some(sqlite_plugins) = plugins_from_file.sqlite_plugin {
+            for conf_sqlite_plugin in sqlite_plugins {
+                let mut sqlite_plugin =
+                    SqlitePlugin::new(conf_sqlite_plugin.meta, conf_sqlite_plugin.config)
+                        .context("Failed to create SQLite plugin")?;
 
-    let mut print_plugin = print_plugin::PrintPlugin::new(print_plugin_meta, print_plugin_config);
+                sqlite_plugin
+                    .initialize()
+                    .await
+                    .context("Failed to initialize SQLite plugin")?;
 
-    print_plugin
-        .initialize()
-        .await
-        .context("Failed to initialize Print plugin")?;
+                plugins.push(Arc::new(sqlite_plugin));
+            }
+        }
+    } else {
+        tracing::warn!("No plugins configured.");
+    }
 
-    // Plugins are initialized before they are added to the state.
-    // Well because of Arc.
-    let plugins: Vec<Arc<dyn PushAndPlugin>> = vec![
-        Arc::new(postgres_plugin),
-        Arc::new(postgres_x_plugin),
-        Arc::new(sqlite_plugin),
-        Arc::new(file_plugin),
-        Arc::new(print_plugin),
-    ];
+    let mut plugin_names: HashSet<&str> = HashSet::new();
+
+    for plugin in &plugins {
+        let name = plugin.name();
+        if plugin_names.contains(name) {
+            tracing::warn!(name = name, "Duplicate plugin name.");
+        }
+
+        plugin_names.insert(name);
+
+        tracing::debug!(
+            name = %name,
+            type_ = %plugin.type_(),
+            group = %plugin.group(),
+            "Plugin ready."
+        );
+    }
 
     let state = ApiState::new(plugins);
 
@@ -171,8 +194,6 @@ pub async fn run() -> AnyResult<()> {
                     crate::middlewares::trace_response_body::trace_response_body,
                 )),
         );
-
-    let addr = SocketAddr::from(([0, 0, 0, 0], 5050));
 
     tracing::info!(%addr, "Starting server.");
 

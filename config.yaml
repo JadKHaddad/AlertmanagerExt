@@ -1,0 +1,53 @@
+server:
+  host: localhost
+  port: 5050
+plugins:
+  file_plugin:
+    - meta:
+        name: file_plugin_1
+        group: default
+      config:
+        dir_path: alertmanager_ext_server/pushes
+        file_type: Json
+  postgres_plugin:
+    - meta:
+        name: postgres_plugin_1
+        group: default
+      config:
+        connection_string: postgres://user:password@localhost:5432/database
+        max_connections: 15
+        connection_timeout:
+          secs: 10
+          nanos: 0
+  postgres_sea_plugin:
+    - meta:
+        name: postgres_sea_plugin_1
+        group: default
+      config:
+        connection_string: postgres://user:password@localhost:5434/database
+        max_connections: 15
+        connection_timeout:
+          secs: 10
+          nanos: 0
+  postgres_x_plugin:
+    - meta:
+        name: postgres_x_plugin_1
+        group: default
+      config:
+        connection_string: postgres://user:password@localhost:5433/database
+        max_connections: 15
+        connection_timeout:
+          secs: 10
+          nanos: 0
+  print_plugin:
+    - meta:
+        name: print_plugin_1
+        group: default
+      config:
+        print_type: Debug
+  sqlite_plugin:
+    - meta:
+        name: sqlite_plugin_1
+        group: default
+      config:
+        database_url: file:alertmanager_ext_server/db/sqlite.db

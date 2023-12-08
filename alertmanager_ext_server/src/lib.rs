@@ -1,5 +1,5 @@
-pub(crate) mod cli;
-pub(crate) mod config;
+pub mod cli;
+pub mod config;
 pub(crate) mod error_response;
 pub(crate) mod extractors;
 pub(crate) mod middlewares;
