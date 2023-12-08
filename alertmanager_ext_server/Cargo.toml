@@ -21,11 +21,14 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 axum = { workspace = true }
 hyper = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
+serde_with = { workspace = true }
 serde_json = { workspace = true }
+serde_yaml = { workspace = true }
 async-trait = { workspace = true }
 utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }

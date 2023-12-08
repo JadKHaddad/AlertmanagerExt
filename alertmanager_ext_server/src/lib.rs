@@ -1,3 +1,4 @@
+pub(crate) mod config;
 pub(crate) mod error_response;
 pub(crate) mod extractors;
 pub(crate) mod middlewares;
