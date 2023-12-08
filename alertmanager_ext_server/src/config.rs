@@ -1,3 +1,7 @@
+use file_plugin::{FilePluginConfig, FilePluginMeta};
+use mongo_plugin::{MongoPluginConfig, MongoPluginMeta};
+use postgres_plugin::{PostgresPluginConfig, PostgresPluginMeta};
+use print_plugin::{PrintPluginConfig, PrintPluginMeta};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{net::Ipv4Addr, path::Path, str::FromStr};
@@ -22,7 +26,7 @@ pub enum ConfigFromYamlFileError {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Config {
     pub server: ServerConfig,
-    pub plugins: PluginsConfig,
+    pub plugins: Option<PluginsConfig>,
 }
 
 impl Config {
@@ -80,13 +84,54 @@ impl From<LocalhostOrIpv4Addr> for Ipv4Addr {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct PluginsConfig {}
+pub struct PluginsConfig {
+    pub file_plugin: Option<Vec<FilePluginFromFileConfig>>,
+    pub mongo_plugin: Option<Vec<MongoPluginFromFileConfig>>,
+    pub postgres_plugin: Option<Vec<PostgresPluginFromFileConfig>>,
+    pub postgres_sea_plugin: Option<Vec<PostgresSeaPluginFromFileConfig>>,
+    pub postgres_x_plugin: Option<Vec<PostgresXPluginFromFileConfig>>,
+    pub print_plugin: Option<Vec<PrintPluginFromFileConfig>>,
+    pub sqlite_plugin: Option<Vec<SqlitePluginFromFileConfig>>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct PluginMetadata {
-    pub name: String,
-    pub group: String,
+pub struct FilePluginFromFileConfig {
+    pub meta: FilePluginMeta,
+    pub config: FilePluginConfig,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MongoPluginFromFileConfig {
+    pub meta: MongoPluginMeta,
+    pub config: MongoPluginConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PostgresPluginFromFileConfig {
+    pub meta: PostgresPluginMeta,
+    pub config: PostgresPluginConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PostgresSeaPluginFromFileConfig {
+    pub meta: PostgresPluginMeta,
+    pub config: PostgresPluginConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PostgresXPluginFromFileConfig {
+    pub meta: PostgresPluginMeta,
+    pub config: PostgresPluginConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PrintPluginFromFileConfig {
+    pub meta: PrintPluginMeta,
+    pub config: PrintPluginConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SqlitePluginFromFileConfig {}
 
 #[cfg(test)]
 mod test {
@@ -100,7 +145,7 @@ mod test {
                 host: LocalhostOrIpv4Addr::Localhost(Localhost),
                 port: 8080,
             },
-            plugins: PluginsConfig {},
+            plugins: None,
         };
         let config = serde_json::to_string_pretty(&config).expect("failed to serialize config");
         println!("{}", config);
@@ -114,9 +159,60 @@ mod test {
                 host: LocalhostOrIpv4Addr::Ipv4Addr(Ipv4Addr::new(10, 12, 3, 1)),
                 port: 8080,
             },
-            plugins: PluginsConfig {},
+            plugins: None,
         };
         let config = serde_json::to_string_pretty(&config).expect("failed to serialize config");
+        println!("{}", config);
+    }
+
+    #[ignore]
+    #[test]
+    fn serialize_yaml_with_plugins() {
+        let config = Config {
+            server: ServerConfig {
+                host: LocalhostOrIpv4Addr::Ipv4Addr(Ipv4Addr::new(10, 12, 3, 1)),
+                port: 8080,
+            },
+            plugins: Some(PluginsConfig {
+                file_plugin: Some(vec![
+                    FilePluginFromFileConfig {
+                        meta: FilePluginMeta {
+                            name: "file_plugin".to_string(),
+                            group: "file".to_string(),
+                        },
+                        config: FilePluginConfig {
+                            dir_path: "/tmp".into(),
+                            file_type: file_plugin::FileType::Json,
+                        },
+                    },
+                    FilePluginFromFileConfig {
+                        meta: FilePluginMeta {
+                            name: "file_plugin_2".to_string(),
+                            group: "file".to_string(),
+                        },
+                        config: FilePluginConfig {
+                            dir_path: "/tmp".into(),
+                            file_type: file_plugin::FileType::Json,
+                        },
+                    },
+                ]),
+                print_plugin: Some(vec![PrintPluginFromFileConfig {
+                    meta: PrintPluginMeta {
+                        name: "print_plugin".to_string(),
+                        group: "print".to_string(),
+                    },
+                    config: PrintPluginConfig {
+                        print_type: print_plugin::PrintType::Json,
+                    },
+                }]),
+                mongo_plugin: None,
+                postgres_plugin: None,
+                postgres_sea_plugin: None,
+                postgres_x_plugin: None,
+                sqlite_plugin: None,
+            }),
+        };
+        let config = serde_yaml::to_string(&config).expect("failed to serialize config");
         println!("{}", config);
     }
 
@@ -127,8 +223,7 @@ mod test {
             "server": {
                 "host": "localhost",
                 "port": 8080
-            },
-            "plugins": {}
+            }
         }
         "#;
         let config: Config = serde_json::from_str(config).expect("failed to deserialize config");
@@ -146,8 +241,7 @@ mod test {
             "server": {
                 "host": "10.12.3.1",
                 "port": 8080
-            },
-            "plugins": {}
+            }
         }
         "#;
 

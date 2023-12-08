@@ -1,9 +1,12 @@
 use anyhow::{Context, Result as AnyResult};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 mod database;
 mod error;
 mod impls;
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Configuration for the PostgresX plugin
 pub struct PostgresXPluginConfig {
     /// Connection string for the PostgresX database
@@ -14,6 +17,7 @@ pub struct PostgresXPluginConfig {
     pub connection_timeout: std::time::Duration,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Metadata for the PostgresX plugin
 pub struct PostgresXPluginMeta {
     /// Name of the plugin

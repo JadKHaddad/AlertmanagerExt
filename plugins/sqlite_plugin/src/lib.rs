@@ -1,5 +1,7 @@
 use anyhow::{Context, Result as AnyResult};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 mod database;
 mod impls;
@@ -8,12 +10,14 @@ pub(crate) const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations"
 
 type Pool = deadpool_diesel::sqlite::Pool;
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Configuration for the SQLite plugin
 pub struct SqlitePluginConfig {
     /// Path to the database file
     pub database_url: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SqlitePluginMeta {
     /// Name of the plugin
     pub name: String,

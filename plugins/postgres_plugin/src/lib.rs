@@ -1,6 +1,8 @@
 use anyhow::{Context, Result as AnyResult};
 use diesel_async::{pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 mod database;
 mod error;
@@ -10,6 +12,7 @@ pub(crate) const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations"
 
 type Pool = bb8::Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Configuration for the Postgres plugin
 pub struct PostgresPluginConfig {
     /// Connection string for the Postgres database
@@ -20,6 +23,7 @@ pub struct PostgresPluginConfig {
     pub connection_timeout: std::time::Duration,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Metadata for the Postgres plugin
 pub struct PostgresPluginMeta {
     /// Name of the plugin

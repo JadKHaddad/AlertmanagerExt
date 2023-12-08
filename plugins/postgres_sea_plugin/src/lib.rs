@@ -1,5 +1,7 @@
 use anyhow::{Context, Result as AnyResult};
+use schemars::JsonSchema;
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
+use serde::{Deserialize, Serialize};
 
 #[allow(clippy::enum_variant_names)]
 mod entity;
@@ -7,6 +9,7 @@ mod entity_ext;
 mod error;
 mod impls;
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Configuration for the PostgresSea plugin
 pub struct PostgresSeaPluginConfig {
     /// Connection string for the Postgres database
@@ -17,6 +20,7 @@ pub struct PostgresSeaPluginConfig {
     pub connection_timeout: std::time::Duration,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Metadata for the PostgresSea plugin
 pub struct PostgresSeaPluginMeta {
     /// Name of the plugin

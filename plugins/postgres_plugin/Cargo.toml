@@ -9,6 +9,7 @@ edition = "2021"
 push_definitions = { path = "../../push/push_definitions" }
 pull_definitions = { path = "../../pull/pull_definitions" }
 plugins_definitions = { path = "../plugins_definitions" }
+models = { path = "../../models" }
 tokio = { workspace = true }
 async-trait = { workspace = true }
 anyhow = { workspace = true }
@@ -17,7 +18,8 @@ tracing-test = { workspace = true }
 thiserror = { workspace = true }
 dotenv = { workspace = true }
 chrono = { workspace = true }
-models = { path = "../../models" }
+serde = { workspace = true }
+schemars = { workspace = true }
 diesel = { version = "2.1.2", features = ["chrono", "postgres", "time"] }
 diesel_migrations = "2.1.0"
 bb8 = "0.8"

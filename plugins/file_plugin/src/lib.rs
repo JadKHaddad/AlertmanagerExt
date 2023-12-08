@@ -1,10 +1,13 @@
 use error::{DirError, SerializeError};
 use models::AlertmanagerPush;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 mod error;
 mod impls;
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// The type of file to write
 pub enum FileType {
     Json,
@@ -38,6 +41,7 @@ impl FileType {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Configuration for the File plugin
 pub struct FilePluginConfig {
     /// The path to the directory where the files will be stored
@@ -46,6 +50,7 @@ pub struct FilePluginConfig {
     pub file_type: FileType,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Metadata for the File plugin
 pub struct FilePluginMeta {
     /// Name of the plugin

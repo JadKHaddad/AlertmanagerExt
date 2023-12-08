@@ -1,5 +1,9 @@
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
 mod impls;
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// The `PrintType` enum is used to specify the type of printing that should be done
 pub enum PrintType {
     /// Prints as a debug string
@@ -12,12 +16,14 @@ pub enum PrintType {
     Yaml,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Configuration for the Print plugin
 pub struct PrintPluginConfig {
     /// The type of printing to do
     pub print_type: PrintType,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Metadata for the Print plugin
 pub struct PrintPluginMeta {
     /// Name of the plugin

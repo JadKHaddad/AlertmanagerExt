@@ -19,3 +19,5 @@ tracing-test = { workspace = true }
 thiserror = { workspace = true }
 dotenv = { workspace = true }
 sea-orm = { version = "0.12" }
+serde = { workspace = true }
+schemars = { workspace = true }

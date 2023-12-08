@@ -7,23 +7,25 @@ use database::models::{
     },
 };
 use mongodb::{options::ClientOptions, Client, Collection, Database};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 mod database;
 mod error;
 mod impls;
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Configuration for the mongo plugin
 pub struct MongoPluginConfig {
     /// Connection string to the mongo database
     pub connection_string: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Meta information for the mongo plugin
 pub struct MongoPluginMeta {
     /// Name of the plugin
     pub name: String,
-    /// Type of the plugin
-    pub type_: &'static str,
     /// Group of the plugin
     pub group: String,
 }

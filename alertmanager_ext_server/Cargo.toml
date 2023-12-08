@@ -35,3 +35,4 @@ utoipa-swagger-ui = { workspace = true }
 utoipa-redoc = { workspace = true }
 utoipa-rapidoc = { workspace = true }
 prometheus-client = { workspace = true }
+clap = { version = "4.4.3", features = ["derive", "env"] }
