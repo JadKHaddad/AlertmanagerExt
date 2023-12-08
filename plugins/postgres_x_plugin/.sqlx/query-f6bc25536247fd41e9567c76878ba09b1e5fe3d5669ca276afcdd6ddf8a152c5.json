@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO groups_common_annotations (group_id, common_annotation_id) VALUES ($1, $2)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f6bc25536247fd41e9567c76878ba09b1e5fe3d5669ca276afcdd6ddf8a152c5"
+}

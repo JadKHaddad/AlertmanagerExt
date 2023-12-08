@@ -1,0 +1,132 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\r\n    alerts.id,\r\n    group_key,\r\n    status AS \"status: AlertStatusModel\",\r\n    starts_at,\r\n    ends_at,\r\n    generator_url,\r\n    fingerprint,\r\n    labels as \"labels!: Vec<Label>\",\r\n    annotations as \"annotations!: Vec<Annotation>\"\r\nFROM (\r\n        SELECT\r\n            labels_per_alert.id,\r\n            labels_per_alert.labels,\r\n            ARRAY_AGG( (annotations)) AS annotations\r\n        FROM (\r\n                SELECT\r\n                    alerts.id,\r\n                    ARRAY_AGG( (labels)) AS labels\r\n                FROM alerts\r\n                    INNER JOIN alerts_labels ON alerts_labels.alert_id = alerts.id\r\n                    INNER JOIN labels ON labels.id = alerts_labels.label_id\r\n                GROUP BY\r\n                    alerts.id\r\n            ) AS labels_per_alert\r\n            INNER JOIN alerts_annotations ON alerts_annotations.alert_id = labels_per_alert.id\r\n            INNER JOIN annotations ON annotations.id = alerts_annotations.annotation_id\r\n        GROUP BY\r\n            labels_per_alert.id,\r\n            labels_per_alert.labels\r\n    ) AS labels_and_annotations_per_alert\r\n    INNER JOIN alerts ON alerts.id = labels_and_annotations_per_alert.id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "group_key",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "status: AlertStatusModel",
+        "type_info": {
+          "Custom": {
+            "name": "alert_status",
+            "kind": {
+              "Enum": [
+                "resolved",
+                "firing"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "starts_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 4,
+        "name": "ends_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "generator_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "fingerprint",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "labels!: Vec<Label>",
+        "type_info": {
+          "Custom": {
+            "name": "_labels",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "labels",
+                  "kind": {
+                    "Composite": [
+                      [
+                        "id",
+                        "Int4"
+                      ],
+                      [
+                        "name",
+                        "Varchar"
+                      ],
+                      [
+                        "value",
+                        "Varchar"
+                      ]
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "annotations!: Vec<Annotation>",
+        "type_info": {
+          "Custom": {
+            "name": "_annotations",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "annotations",
+                  "kind": {
+                    "Composite": [
+                      [
+                        "id",
+                        "Int4"
+                      ],
+                      [
+                        "name",
+                        "Varchar"
+                      ],
+                      [
+                        "value",
+                        "Varchar"
+                      ]
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "8a31f178b5c4ccd8c66cc5cad7400dc6f343a943de1ffca5752670ab5be6f4a2"
+}

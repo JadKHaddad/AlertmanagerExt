@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    INSERT INTO alerts_annotations (alert_id, annotation_id) VALUES ($1, $2)\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c1451b4932735dff3bac0ce2a9ea9e9f2b2f90656b7e8f648b13825855875d1d"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    INSERT INTO alerts_labels (alert_id, label_id) VALUES ($1, $2)\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cfd8500ce6c511a5803ef6a684d31f8a1254a159e1eddb4c3edb6928ce8ab6ac"
+}

@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO alerts (group_id, group_key, status, starts_at, ends_at, generator_url, fingerprint) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Varchar",
+        {
+          "Custom": {
+            "name": "alert_status",
+            "kind": {
+              "Enum": [
+                "resolved",
+                "firing"
+              ]
+            }
+          }
+        },
+        "Timestamp",
+        "Timestamp",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "78e8f5bc3bd3f4b646a2cbc1f4cbe783ff51f49b8d672029f9b5c65756be748f"
+}
