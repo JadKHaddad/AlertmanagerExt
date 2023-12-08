@@ -14,7 +14,7 @@ type Pool = deadpool_diesel::sqlite::Pool;
 /// Configuration for the SQLite plugin
 pub struct SqlitePluginConfig {
     /// Path to the database file
-    pub database_url: String,
+    pub connection_string: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -40,7 +40,7 @@ pub struct SqlitePlugin {
 impl SqlitePlugin {
     pub fn new(meta: SqlitePluginMeta, config: SqlitePluginConfig) -> AnyResult<Self> {
         let manager = deadpool_diesel::sqlite::Manager::new(
-            &config.database_url,
+            &config.connection_string,
             deadpool_diesel::Runtime::Tokio1,
         );
         let pool = deadpool_diesel::sqlite::Pool::builder(manager)

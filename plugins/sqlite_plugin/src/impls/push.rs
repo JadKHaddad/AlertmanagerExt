@@ -19,9 +19,9 @@ impl Push for SqlitePlugin {
             reason: "Already initialized.".to_string(),
         })?;
 
-        let database_url = config.database_url;
+        let connection_string = config.connection_string;
         let handle: JoinHandle<AnyResult<()>> = tokio::task::spawn_blocking(move || {
-            let mut conn = SqliteConnection::establish(&database_url)
+            let mut conn = SqliteConnection::establish(&connection_string)
                 .context("Failed to establish connection")?;
 
             conn.run_pending_migrations(MIGRATIONS)

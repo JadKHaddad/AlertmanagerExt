@@ -50,4 +50,4 @@ plugins:
         name: sqlite_plugin_1
         group: default
       config:
-        database_url: file:alertmanager_ext_server/db/sqlite.db
+        connection_string: file:alertmanager_ext_server/db/sqlite.db
