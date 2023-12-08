@@ -1,0 +1,27 @@
+use ormx::Table;
+use sqlx::FromRow;
+
+#[derive(Debug, Clone, FromRow, Table)]
+#[ormx(table = "alerts", id = id, insertable)]
+pub struct Alert {
+    #[ormx(default)]
+    pub id: u64,
+    pub group_key: String,
+    pub status: String,
+    pub starts_at: chrono::NaiveDateTime,
+    pub ends_at: Option<chrono::NaiveDateTime>,
+    pub generator_url: String,
+    pub fingerprint: String,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct AlertLabel {
+    pub alert_id: u64,
+    pub label_id: u64,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct AlertAnnotation {
+    pub alert_id: u64,
+    pub annotation_id: u64,
+}

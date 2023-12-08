@@ -63,3 +63,12 @@ pub struct StandAloneAlert {
     pub group_key: String,
     pub alert: Alert,
 }
+
+impl ToString for Status {
+    fn to_string(&self) -> String {
+        match self {
+            Status::Resolved => "resolved".to_string(),
+            Status::Firing => "firing".to_string(),
+        }
+    }
+}
