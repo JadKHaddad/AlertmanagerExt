@@ -45,6 +45,11 @@ impl Config {
         Ok(config)
     }
 
+    pub async fn new_from_yaml_str(config: &str) -> Result<Self, ConfigFromYamlFileError> {
+        let config = serde_yaml::from_str::<Self>(config)?;
+        Ok(config)
+    }
+
     pub fn addr(&self) -> SocketAddr {
         SocketAddr::new(
             Ipv4Addr::from(self.server.host.clone()).into(),

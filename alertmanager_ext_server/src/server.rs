@@ -1,5 +1,5 @@
 use crate::{
-    error_response::ErrorResponse, openapi::OpenApiDocFinalizer, state::ApiState,
+    config::Config, error_response::ErrorResponse, openapi::OpenApiDocFinalizer, state::ApiState,
     traits::PushAndPlugin,
 };
 use anyhow::{Context, Result as AnyResult};
@@ -32,12 +32,11 @@ async fn not_found() -> ErrorResponse {
     ErrorResponse::not_found()
 }
 
-pub async fn run(config: crate::config::Config) -> AnyResult<()> {
-    let addr = config.addr();
-
+async fn create_plugins(config: Config) -> AnyResult<Vec<Arc<dyn PushAndPlugin>>> {
     let mut plugins: Vec<Arc<dyn PushAndPlugin>> = vec![];
 
     tracing::debug!("Creating plugins.");
+
     if let Some(plugins_from_file) = config.plugins {
         if let Some(file_plugins) = plugins_from_file.file_plugin {
             for conf_file_plugin in file_plugins {
@@ -137,25 +136,29 @@ pub async fn run(config: crate::config::Config) -> AnyResult<()> {
         tracing::warn!("No plugins configured.");
     }
 
-    {
-        let mut plugin_names: HashSet<&str> = HashSet::new();
+    let mut plugin_names: HashSet<&str> = HashSet::new();
 
-        for plugin in &plugins {
-            let name = plugin.name();
-            if plugin_names.contains(name) {
-                tracing::warn!(name = name, "Duplicate plugin name.");
-            }
-
-            plugin_names.insert(name);
-
-            tracing::debug!(
-                name = %name,
-                type_ = %plugin.type_(),
-                group = %plugin.group(),
-                "Plugin ready."
-            );
+    for plugin in &plugins {
+        let name = plugin.name();
+        if plugin_names.contains(name) {
+            tracing::warn!(name = name, "Duplicate plugin name.");
         }
+
+        plugin_names.insert(name);
+
+        tracing::debug!(
+            name = %name,
+            type_ = %plugin.type_(),
+            group = %plugin.group(),
+            "Plugin ready."
+        );
     }
+
+    Ok(plugins)
+}
+
+async fn create_router(config: Config) -> AnyResult<Router> {
+    let plugins = create_plugins(config).await?;
 
     let state = ApiState::new(plugins);
 
@@ -197,9 +200,17 @@ pub async fn run(config: crate::config::Config) -> AnyResult<()> {
                 )),
         );
 
-    tracing::info!(%addr, "Starting server.");
+    Ok(app)
+}
 
-    axum::Server::bind(&addr)
+pub async fn run(config: Config) -> AnyResult<()> {
+    let addr = config.addr();
+
+    let app = create_router(config).await?;
+
+    tracing::info!(%addr, "Starting server.");
+    axum::Server::try_bind(&addr)
+        .context("Failed to bind server")?
         .serve(app.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
         .await
@@ -232,4 +243,34 @@ async fn shutdown_signal() {
     }
 
     tracing::info!("Shutting down.");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum_test::TestServer;
+    use models::utils::generate_random_alertmanager_pushes;
+    use tracing_test::traced_test;
+
+    #[ignore]
+    #[tokio::test]
+    #[traced_test]
+    // cargo test --package alertmanager_ext_server --lib --release -- server::tests::push_random_alerts --exact --nocapture --ignored
+    async fn push_random_alerts() {
+        let config = Config::new_from_yaml_str(include_str!("../../config.yaml"))
+            .await
+            .expect("Failed to load config.");
+
+        let app = create_router(config)
+            .await
+            .expect("Failed to create router.");
+
+        let server = TestServer::new(app).expect("Failed to create test server.");
+
+        let pushes = generate_random_alertmanager_pushes(1000);
+        for (i, push) in pushes.iter().enumerate() {
+            tracing::info!("Pushing alert {}/{}", i + 1, pushes.len());
+            server.post("/push").json(&push).await;
+        }
+    }
 }

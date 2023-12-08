@@ -5,6 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[dev-dependencies]
+axum-test = "13.4.1"
+
 [dependencies]
 models = { path = "../models" }
 push_definitions = { path = "../push/push_definitions" }
@@ -24,6 +27,7 @@ axum = { workspace = true }
 hyper = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tracing-test = { workspace = true }
 anyhow = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }

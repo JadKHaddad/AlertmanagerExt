@@ -7,7 +7,7 @@ plugins:
         name: file_plugin_1
         group: default
       config:
-        dir_path: alertmanager_ext_server/pushes
+        dir_path: dev/data/pushes
         file_type: Json
   postgres_plugin:
     - meta:
@@ -50,4 +50,4 @@ plugins:
         name: sqlite_plugin_1
         group: default
       config:
-        connection_string: file:alertmanager_ext_server/db/sqlite.db
+        connection_string: file:dev/data/db/sqlite.db

@@ -101,7 +101,7 @@ mod test {
     #[ignore]
     #[tokio::test]
     #[traced_test]
-    // cargo test --package postgres_plugin --lib --release -- test::push_random_alerts --exact --nocapture
+    // cargo test --package postgres_plugin --lib --release -- test::push_random_alerts --exact --nocapture --ignored
     async fn push_random_alerts() {
         let plugin = create_and_init_plugin().await;
         let pushes = generate_random_alertmanager_pushes(200);
@@ -116,7 +116,7 @@ mod test {
     #[ignore]
     #[tokio::test]
     #[traced_test]
-    // cargo test --package postgres_plugin --lib --release -- test::pull_alerts --exact --nocapture
+    // cargo test --package postgres_plugin --lib --release -- test::pull_alerts --exact --nocapture --ignored
     async fn pull_alerts() {
         let plugin = create_and_init_plugin().await;
         let filter = PullAlertsFilter {};
