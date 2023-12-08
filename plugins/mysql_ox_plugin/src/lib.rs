@@ -86,6 +86,7 @@ mod test {
     #[ignore]
     #[tokio::test]
     #[traced_test]
+    // cargo test --package mysql_ox_plugin --lib -- test::init_plugin --exact --nocapture --ignored
     async fn init_plugin() {
         let _ = create_and_init_plugin().await;
     }

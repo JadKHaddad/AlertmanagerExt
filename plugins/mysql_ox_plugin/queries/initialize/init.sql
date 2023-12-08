@@ -64,48 +64,45 @@ CREATE TABLE
 
 CREATE TABLE
     IF NOT EXISTS groups_labels (
+        id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
         group_id BIGINT UNSIGNED NOT NULL,
         label_id BIGINT UNSIGNED NOT NULL,
-        PRIMARY KEY (group_id, label_id),
         FOREIGN KEY (group_id) REFERENCES `groups`(id),
         FOREIGN KEY (label_id) REFERENCES labels(id)
     );
 
 CREATE TABLE
     IF NOT EXISTS groups_common_labels (
+        id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
         group_id BIGINT UNSIGNED NOT NULL,
         common_label_id BIGINT UNSIGNED NOT NULL,
-        PRIMARY KEY (group_id, common_label_id),
         FOREIGN KEY (group_id) REFERENCES `groups`(id),
         FOREIGN KEY (common_label_id) REFERENCES common_labels(id)
     );
 
 CREATE TABLE
     IF NOT EXISTS groups_common_annotations (
+        id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
         group_id BIGINT UNSIGNED NOT NULL,
         common_annotation_id BIGINT UNSIGNED NOT NULL,
-        PRIMARY KEY (
-            group_id,
-            common_annotation_id
-        ),
         FOREIGN KEY (group_id) REFERENCES `groups`(id),
         FOREIGN KEY (common_annotation_id) REFERENCES common_annotations(id)
     );
 
 CREATE TABLE
     IF NOT EXISTS alerts_labels (
+        id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
         alert_id BIGINT UNSIGNED NOT NULL,
         label_id BIGINT UNSIGNED NOT NULL,
-        PRIMARY KEY (alert_id, label_id),
         FOREIGN KEY (alert_id) REFERENCES alerts(id),
         FOREIGN KEY (label_id) REFERENCES labels(id)
     );
 
 CREATE TABLE
     IF NOT EXISTS alerts_annotations (
+        id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
         alert_id BIGINT UNSIGNED NOT NULL,
         annotation_id BIGINT UNSIGNED NOT NULL,
-        PRIMARY KEY (alert_id, annotation_id),
         FOREIGN KEY (alert_id) REFERENCES alerts(id),
         FOREIGN KEY (annotation_id) REFERENCES annotations(id)
     );

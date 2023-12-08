@@ -19,6 +19,9 @@ members = [
     "plugins/file_plugin",
 ]
 
+[profile.dev.package.sqlx-macros]
+opt-level = 3
+
 [workspace.dependencies]
 tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter", "time"] }
