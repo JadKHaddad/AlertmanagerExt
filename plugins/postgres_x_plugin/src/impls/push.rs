@@ -38,18 +38,8 @@ impl Push for PostgresXPlugin {
     async fn initialize(&mut self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
 
-        let result = self
-            .pool
-            .execute(include_str!("../../queries/initialize/01_alert_status.sql"))
-            .await;
-        Self::filter_already_exists_error(result).map_err(|error| InitializeError {
-            reason: error.to_string(),
-        })?;
-
-        self.pool
-            .execute(include_str!(
-                "../../queries/initialize/02_after_alert_status.sql"
-            ))
+        sqlx::migrate!()
+            .run(&self.pool)
             .await
             .map_err(|error| InitializeError {
                 reason: error.to_string(),

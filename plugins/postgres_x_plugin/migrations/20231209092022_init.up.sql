@@ -1,3 +1,7 @@
+-- Add up migration script here
+
+CREATE TYPE alert_status AS ENUM ('resolved', 'firing');
+
 CREATE TABLE
     IF NOT EXISTS groups(
         id SERIAL PRIMARY KEY,

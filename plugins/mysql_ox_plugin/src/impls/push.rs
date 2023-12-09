@@ -4,7 +4,7 @@ use models::AlertmanagerPush;
 use ormx::Insert;
 use plugins_definitions::Plugin;
 use push_definitions::{InitializeError, Push, PushError};
-use sqlx::{Connection, Executor};
+use sqlx::Connection;
 
 #[async_trait]
 impl Push for MysqlOXPlugin {
@@ -12,8 +12,8 @@ impl Push for MysqlOXPlugin {
     async fn initialize(&mut self) -> Result<(), InitializeError> {
         tracing::trace!("Initializing.");
 
-        self.pool
-            .execute(include_str!("../../queries/initialize/init.sql"))
+        sqlx::migrate!()
+            .run(&self.pool)
             .await
             .map_err(|error| InitializeError {
                 reason: error.to_string(),
