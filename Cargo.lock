@@ -1850,8 +1850,11 @@ name = "jinja_renderer"
 version = "0.1.0"
 dependencies = [
  "minijinja",
+ "minijinja-contrib",
  "models",
  "random_models_generator",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -2051,6 +2054,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "minijinja-contrib"
+version = "1.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdee16290cb52253270ff60e3e666d8f44d0e06c3bde1843572fe5da6efaf772"
+dependencies = [
+ "minijinja",
+ "serde",
+ "time",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2164,6 +2178,7 @@ dependencies = [
  "plugins_definitions",
  "pull_definitions",
  "push_definitions",
+ "random_models_generator",
  "schemars",
  "serde",
  "sqlx 0.5.13",

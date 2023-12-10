@@ -5,6 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[dev-dependencies]
+random_models_generator = { path = "../../models_utilities/random_models_generator" }
+
 [dependencies]
 push_definitions = { path = "../../push/push_definitions" }
 pull_definitions = { path = "../../pull/pull_definitions" }

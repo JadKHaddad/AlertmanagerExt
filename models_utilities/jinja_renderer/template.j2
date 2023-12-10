@@ -1,0 +1,39 @@
+Version: {{ push.version }}
+Group key: {{ push.groupKey }}
+Truncated alerts: {{ push.truncatedAlerts }}
+Status: {{ push.status }}
+Receiver: {{ push.receiver }}
+Group labels: 
+{% for key, value in push.groupLabels|items %}
+    {{ key }}: {{ value }}
+{% endfor %}
+Common labels: 
+{% for key, value in push.commonLabels|items %}
+    {{ key }}: {{ value }}
+{% endfor %}
+Common annotations: 
+{% for key, value in push.commonAnnotations|items %}
+    {{ key }}: {{ value }}
+{% endfor %}
+External URL: {{ push.externalURL }}
+Alerts: 
+{% for alert in push.alerts %}
+    Status: {{ alert.status }}
+    Name: {{ alert.labels.alertname }}
+    Lables: 
+    {% for key, value in alert.labels|items %}{% if key != "alertname" %}
+        {{ key }}: {{ value }}
+    {% endif %}{% endfor %}
+    Annotations: 
+    {% for key, value in alert.annotations|items %}
+        {{ key }}: {{ value }}
+    {% endfor %}
+    Starts at: {{ alert.startsAt|datetimeformat(format="[day].[month].[year] [hour]:[minute]:[second]") }}
+    Ends at: {% if alert.endsAt %}{{ alert.endsAt|datetimeformat(format="full") }}{% endif %}
+    Generator URL: {{ alert.generatorURL }}
+    Fingerprint: {{ alert.fingerprint }}
+{% endfor %}
+
+see other datetimeformats:
+    https://docs.rs/minijinja-contrib/latest/minijinja_contrib/filters/fn.datetimeformat.html
+    https://time-rs.github.io/book/api/format-description.html
