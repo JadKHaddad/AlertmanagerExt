@@ -17,6 +17,7 @@ members = [
     "plugins/print_plugin",
     "plugins/ntfy_plugin",
     "plugins/file_plugin",
+    "plugins/filter_plugin",
 ]
 resolver = "2"
 default-members = ["alertmanager_ext_server"]

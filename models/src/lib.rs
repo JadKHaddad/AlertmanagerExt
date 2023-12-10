@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use utoipa::ToSchema;
 
-#[derive(JsonSchema, Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq, Hash)]
+#[derive(
+    JsonSchema, Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq, Hash, Default,
+)]
 #[serde(rename_all = "camelCase")]
 /// Alertmanager webhook payload
 ///
@@ -25,16 +27,19 @@ pub struct AlertmanagerPush {
     pub alerts: Vec<Alert>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema, PartialEq, Eq, Hash)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema, PartialEq, Eq, Hash, Default,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum Status {
+    #[default]
     Resolved,
     Firing,
 }
 
 #[derive(JsonSchema)]
 #[serde_with::serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq, Hash, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Alert {
     pub status: Status,
@@ -53,7 +58,7 @@ pub struct Alert {
     pub fingerprint: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq, Hash, Default)]
 #[serde(rename_all = "camelCase")]
 /// An alert that can be sent to/retrieved from a plugin
 pub struct StandAloneAlert {
