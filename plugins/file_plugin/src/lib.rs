@@ -1,4 +1,5 @@
-use error::{DirError, SerializeError};
+use error::{DirError, NewFilePluginError, ToStringError};
+use jinja_renderer::JinjaRenderer;
 use models::AlertmanagerPush;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -8,10 +9,12 @@ mod error;
 mod impls;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 /// The type of file to write
 pub enum FileType {
     Json,
     Yaml,
+    Jinja { template: PathBuf },
 }
 
 impl FileType {
@@ -19,24 +22,7 @@ impl FileType {
         match self {
             Self::Json => "json",
             Self::Yaml => "yaml",
-        }
-    }
-
-    fn function<T>(&self) -> for<'b> fn(&'b T) -> Result<String, SerializeError>
-    where
-        T: serde::Serialize,
-    {
-        match self {
-            Self::Json => |t: &T| {
-                serde_json::to_string(t).map_err(|error| SerializeError {
-                    reason: error.to_string(),
-                })
-            },
-            Self::Yaml => |t: &T| {
-                serde_yaml::to_string(t).map_err(|error| SerializeError {
-                    reason: error.to_string(),
-                })
-            },
+            Self::Jinja { .. } => "txt",
         }
     }
 }
@@ -67,11 +53,28 @@ pub struct FilePlugin {
     meta: FilePluginMeta,
     /// Configuration for the plugin
     config: FilePluginConfig,
+    /// Renderer for Jinja templates
+    jinja_renderer: Option<JinjaRenderer>,
 }
 
 impl FilePlugin {
-    pub fn new(meta: FilePluginMeta, config: FilePluginConfig) -> Self {
-        Self { meta, config }
+    pub async fn new(
+        meta: FilePluginMeta,
+        config: FilePluginConfig,
+    ) -> Result<Self, NewFilePluginError> {
+        let jinja_renderer = match &config.file_type {
+            FileType::Jinja { template } => {
+                let jinja_renderer = JinjaRenderer::new_from_file(template).await?;
+                Some(jinja_renderer)
+            }
+            _ => None,
+        };
+
+        Ok(Self {
+            meta,
+            config,
+            jinja_renderer,
+        })
     }
 
     fn dir_exists(&self) -> Result<(), DirError> {
@@ -92,10 +95,19 @@ impl FilePlugin {
         Ok(())
     }
 
-    fn serialize(&self, alertmanager_push: &AlertmanagerPush) -> Result<String, SerializeError> {
+    fn to_string(&self, alertmanager_push: &AlertmanagerPush) -> Result<String, ToStringError> {
         let file_type = &self.config.file_type;
 
-        (file_type.function())(alertmanager_push)
+        match file_type {
+            FileType::Json => Ok(serde_json::to_string(alertmanager_push)?),
+            FileType::Yaml => Ok(serde_yaml::to_string(alertmanager_push)?),
+            FileType::Jinja { .. } => {
+                let jinja_renderer = self.jinja_renderer.as_ref().ok_or(ToStringError::Other {
+                    reason: "Jinja renderer not initialized".to_string(),
+                })?;
+                Ok(jinja_renderer.render(alertmanager_push)?)
+            }
+        }
     }
 
     fn decide_file_path(&self, alertmanager_push: &AlertmanagerPush) -> PathBuf {
@@ -110,5 +122,23 @@ impl FilePlugin {
         ));
 
         file_path
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[ignore]
+    #[test]
+    fn serialize_file_type() {
+        let file_type = FileType::Json;
+        let file_type = serde_yaml::to_string(&file_type).expect("failed to serialize file type");
+        println!("{}", file_type);
+        let file_type = FileType::Jinja {
+            template: PathBuf::from("template.j2"),
+        };
+        let file_type = serde_yaml::to_string(&file_type).expect("failed to serialize file type");
+        println!("{}", file_type);
     }
 }

@@ -9,6 +9,7 @@ edition = "2021"
 push_definitions = { path = "../../push/push_definitions" }
 plugins_definitions = { path = "../plugins_definitions" }
 models = { path = "../../models" }
+jinja_renderer = { path = "../../models_utilities/jinja_renderer" }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 tokio = { workspace = true }

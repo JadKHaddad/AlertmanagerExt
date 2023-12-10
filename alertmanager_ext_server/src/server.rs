@@ -41,7 +41,7 @@ async fn create_plugins(config: Config) -> AnyResult<Vec<Arc<dyn PushAndPlugin>>
         if let Some(file_plugins) = plugins_from_file.file_plugin {
             for conf_file_plugin in file_plugins {
                 let mut file_plugin =
-                    FilePlugin::new(conf_file_plugin.meta, conf_file_plugin.config);
+                    FilePlugin::new(conf_file_plugin.meta, conf_file_plugin.config).await?;
 
                 file_plugin
                     .initialize()
@@ -107,7 +107,7 @@ async fn create_plugins(config: Config) -> AnyResult<Vec<Arc<dyn PushAndPlugin>>
         if let Some(print_plugins) = plugins_from_file.print_plugin {
             for conf_print_plugin in print_plugins {
                 let mut print_plugin =
-                    PrintPlugin::new(conf_print_plugin.meta, conf_print_plugin.config);
+                    PrintPlugin::new(conf_print_plugin.meta, conf_print_plugin.config).await?;
 
                 print_plugin
                     .initialize()

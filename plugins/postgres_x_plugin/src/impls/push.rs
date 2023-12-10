@@ -5,32 +5,7 @@ use async_trait::async_trait;
 use models::AlertmanagerPush;
 use plugins_definitions::Plugin;
 use push_definitions::{InitializeError, Push, PushError};
-use sqlx::{Connection, Executor};
-
-impl PostgresXPlugin {
-    fn filter_already_exists_error(
-        result: Result<sqlx::postgres::PgQueryResult, sqlx::Error>,
-    ) -> Result<(), sqlx::Error> {
-        match result {
-            Ok(_) => Ok(()),
-            Err(error) => match error {
-                sqlx::Error::Database(ref database_error) => {
-                    if [
-                        Some(std::borrow::Cow::Borrowed("42710")),
-                        Some(std::borrow::Cow::Borrowed("42P07")),
-                    ]
-                    .contains(&database_error.code())
-                    {
-                        return Ok(());
-                    }
-
-                    Err(error)
-                }
-                error => Err(error),
-            },
-        }
-    }
-}
+use sqlx::Connection;
 
 #[async_trait]
 impl Push for PostgresXPlugin {

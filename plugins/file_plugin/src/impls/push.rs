@@ -25,7 +25,7 @@ impl Push for FilePlugin {
         let file_path = self.decide_file_path(alertmanager_push);
 
         let contents = self
-            .serialize(alertmanager_push)
+            .to_string(alertmanager_push)
             .map_err(|error| PushError {
                 reason: error.to_string(),
             })?;

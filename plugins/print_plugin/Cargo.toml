@@ -8,7 +8,9 @@ edition = "2021"
 [dependencies]
 push_definitions = { path = "../../push/push_definitions" }
 plugins_definitions = { path = "../plugins_definitions" }
+jinja_renderer = { path = "../../models_utilities/jinja_renderer" }
 models = { path = "../../models" }
+thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }

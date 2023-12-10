@@ -4,11 +4,20 @@ server:
 plugins:
   file_plugin:
     - meta:
-        name: file_plugin_1
+        name: json_file_plugin
         group: default
       config:
-        dir_path: dev/data/pushes
-        file_type: Json
+        dir_path: dev/data/json_pushes
+        file_type:
+          type: Json
+    - meta:
+        name: jinja_file_plugin
+        group: default
+      config:
+        dir_path: dev/data/jinja_pushes
+        file_type:
+          type: Jinja
+          template: models_utilities/jinja_renderer/example-template.j2
   postgres_plugin:
     - meta:
         name: postgres_plugin_1
@@ -41,10 +50,18 @@ plugins:
           nanos: 0
   print_plugin:
     - meta:
-        name: print_plugin_1
+        name: debug_print_plugin
         group: default
       config:
-        print_type: Debug
+        print_type:
+          type: Debug
+    - meta:
+        name: jinja_print_plugin
+        group: default
+      config:
+        print_type:
+          type: Jinja
+          template: models_utilities/jinja_renderer/example-template.j2
   sqlite_plugin:
     - meta:
         name: sqlite_plugin_1

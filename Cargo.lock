@@ -1288,6 +1288,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "jinja_renderer",
  "models",
  "plugins_definitions",
  "push_definitions",
@@ -2763,6 +2764,7 @@ name = "print_plugin"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "jinja_renderer",
  "models",
  "plugins_definitions",
  "push_definitions",
@@ -2770,6 +2772,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "thiserror",
  "tokio",
  "tracing",
 ]

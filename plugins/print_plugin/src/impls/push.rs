@@ -1,4 +1,4 @@
-use crate::{PrintPlugin, PrintType};
+use crate::{error::ToStringError, PrintPlugin, PrintType};
 use async_trait::async_trait;
 use models::AlertmanagerPush;
 use plugins_definitions::Plugin;
@@ -24,16 +24,36 @@ impl Push for PrintPlugin {
         let mut bytes = match self.config.print_type {
             PrintType::Debug => format!("{:?}", alertmanager_push).into_bytes(),
             PrintType::Pretty => format!("{:#?}", alertmanager_push).into_bytes(),
-            PrintType::Json => {
-                serde_json::to_vec(alertmanager_push).map_err(|error| PushError {
+            PrintType::Json => serde_json::to_vec(alertmanager_push)
+                .map_err(ToStringError::Json)
+                .map_err(|error| PushError {
                     reason: error.to_string(),
-                })?
-            }
+                })?,
             PrintType::Yaml => serde_yaml::to_string(alertmanager_push)
+                .map_err(ToStringError::Yaml)
                 .map_err(|error| PushError {
                     reason: error.to_string(),
                 })?
                 .into_bytes(),
+            PrintType::Jinja { .. } => {
+                let jinja_renderer = self
+                    .jinja_renderer
+                    .as_ref()
+                    .ok_or(ToStringError::Other {
+                        reason: "Jinja renderer not initialized".to_string(),
+                    })
+                    .map_err(|error| PushError {
+                        reason: error.to_string(),
+                    })?;
+
+                jinja_renderer
+                    .render(alertmanager_push)
+                    .map_err(ToStringError::Jinja)
+                    .map_err(|error| PushError {
+                        reason: error.to_string(),
+                    })?
+                    .into_bytes()
+            }
         };
 
         bytes.push(b'\n');
