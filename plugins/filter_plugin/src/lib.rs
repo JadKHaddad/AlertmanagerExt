@@ -83,6 +83,7 @@ pub struct AddAction {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 pub enum Action {
     Drop(DropRegexAction),
     Replace(ReplaceRegexAction),
@@ -98,19 +99,6 @@ pub struct FilterPluginConfig {
     pub common_annotations: Vec<Action>,
     pub alerts_labels: Vec<Action>,
     pub alerts_annotations: Vec<Action>,
-}
-
-impl Default for FilterPluginConfig {
-    fn default() -> Self {
-        Self {
-            webhook_url: Url::parse("http://localhost:9094").unwrap(),
-            group_labels: vec![],
-            common_labels: vec![],
-            common_annotations: vec![],
-            alerts_labels: vec![],
-            alerts_annotations: vec![],
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -235,26 +223,9 @@ impl FilterPlugin {
 mod test {
     use super::*;
 
-    #[test]
-    fn filter_group_labels() {
-        let group_labels: BTreeMap<String, String> = [
-            ("alertname".to_string(), "Test".to_string()),
-            ("foo".to_string(), "bar".to_string()),
-            ("severity".to_string(), "warning".to_string()),
-            ("instance".to_string(), "localhost".to_string()),
-            ("job".to_string(), "node".to_string()),
-            ("replace_my_value".to_string(), "replace_me".to_string()),
-            ("replace_me".to_string(), "replace_my_name".to_string()),
-            ("baz".to_string(), "booz".to_string()),
-        ]
-        .into();
-
-        let push = AlertmanagerPush {
-            group_labels,
-            ..Default::default()
-        };
-
-        let config = FilterPluginConfig {
+    fn create_group_labels_configs() -> FilterPluginConfig {
+        FilterPluginConfig {
+            webhook_url: Url::parse("http://localhost:8080").unwrap(),
             group_labels: vec![
                 Action::Drop(DropRegexAction {
                     regex: RegexHolder::from_str("^foo$").unwrap(),
@@ -297,6 +268,29 @@ mod test {
                     value: "test".to_string(),
                 }),
             ],
+            common_labels: vec![],
+            common_annotations: vec![],
+            alerts_labels: vec![],
+            alerts_annotations: vec![],
+        }
+    }
+
+    #[test]
+    fn filter_group_labels() {
+        let group_labels: BTreeMap<String, String> = [
+            ("alertname".to_string(), "Test".to_string()),
+            ("foo".to_string(), "bar".to_string()),
+            ("severity".to_string(), "warning".to_string()),
+            ("instance".to_string(), "localhost".to_string()),
+            ("job".to_string(), "node".to_string()),
+            ("replace_my_value".to_string(), "replace_me".to_string()),
+            ("replace_me".to_string(), "replace_my_name".to_string()),
+            ("baz".to_string(), "booz".to_string()),
+        ]
+        .into();
+
+        let push = AlertmanagerPush {
+            group_labels,
             ..Default::default()
         };
 
@@ -305,7 +299,7 @@ mod test {
                 name: "test".to_string(),
                 group: "test".to_string(),
             },
-            config,
+            config: create_group_labels_configs(),
         };
 
         let push = plugin.filter(&push);
@@ -331,5 +325,13 @@ mod test {
         );
         assert_eq!(push.group_labels.get("baz"), Some(&"baaz".to_string()));
         assert_eq!(push.group_labels.get("test"), Some(&"test".to_string()));
+    }
+
+    #[ignore]
+    #[test]
+    fn serialize_and_print() {
+        let config = create_group_labels_configs();
+        let config = serde_yaml::to_string(&config).unwrap();
+        println!("{}", config);
     }
 }

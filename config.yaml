@@ -18,6 +18,35 @@ plugins:
         file_type:
           type: Jinja
           template: models_utilities/jinja_renderer/example-template.j2
+  filter_plugin:
+    - meta:
+        name: filter_plugin_1
+        group: default
+      config:
+        webhook_url: http://localhost:5050/push
+        group_labels:
+          - type: Drop
+            regex: ^.*$
+            target: Name
+          - type: Add
+            name: Label1
+            value: Value1
+        common_labels:
+          - type: Drop
+            regex: ^.*$
+            target: Name
+        common_annotations:
+          - type: Replace
+            regex: ^.*$
+            target: Value
+            replace_with: replaced Value!
+            replacement_target: Value
+        alerts_labels:
+          - type: Drop
+            regex: ^.*$
+            target: Name
+        alerts_annotations: []
+
   postgres_plugin:
     - meta:
         name: postgres_plugin_1

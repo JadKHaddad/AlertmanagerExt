@@ -29,7 +29,7 @@ impl Push for FilterPlugin {
 
         reqwest::Client::new()
             .post(self.config.webhook_url.clone())
-            .body(serde_json::to_string(&alertmanager_push).map_err(InternalPushError::Serialize)?)
+            .json(&alertmanager_push)
             .send()
             .await
             .map_err(InternalPushError::Reqwest)?;

@@ -9,6 +9,7 @@ use axum::{
     Router,
 };
 use file_plugin::FilePlugin;
+use filter_plugin::FilterPlugin;
 use postgres_plugin::PostgresPlugin;
 use postgres_sea_plugin::PostgresSeaPlugin;
 use postgres_x_plugin::PostgresXPlugin;
@@ -49,6 +50,22 @@ async fn create_plugins(config: Config) -> AnyResult<Vec<Arc<dyn PushAndPlugin>>
                     .context("Failed to initialize File plugin")?;
 
                 plugins.push(Arc::new(file_plugin));
+            }
+        }
+
+        if let Some(filter_plugins) = plugins_from_file.filter_plugin {
+            for conf_filter_plugin in filter_plugins {
+                let mut filter_plugin =
+                    FilterPlugin::new(conf_filter_plugin.meta, conf_filter_plugin.config)
+                        .await
+                        .context("Failed to create Filter plugin")?;
+
+                filter_plugin
+                    .initialize()
+                    .await
+                    .context("Failed to initialize Filter plugin")?;
+
+                plugins.push(Arc::new(filter_plugin));
             }
         }
 

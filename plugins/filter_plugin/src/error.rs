@@ -16,12 +16,6 @@ pub enum NewFilterPluginError {
 pub enum InternalPushError {
     #[error("Loop detected.")]
     LoopDetected,
-    #[error("Serialize error: {0}")]
-    Serialize(
-        #[source]
-        #[from]
-        serde_json::Error,
-    ),
     #[error("Reqwest error: {0}")]
     Reqwest(
         #[source]

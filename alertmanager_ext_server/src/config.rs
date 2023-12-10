@@ -1,4 +1,5 @@
 use file_plugin::{FilePluginConfig, FilePluginMeta};
+use filter_plugin::{FilterPluginConfig, FilterPluginMeta};
 use mongo_plugin::{MongoPluginConfig, MongoPluginMeta};
 use postgres_plugin::{PostgresPluginConfig, PostgresPluginMeta};
 use postgres_sea_plugin::{PostgresSeaPluginConfig, PostgresSeaPluginMeta};
@@ -105,12 +106,19 @@ impl From<LocalhostOrIpv4Addr> for Ipv4Addr {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct PluginsConfig {
     pub file_plugin: Option<Vec<FilePluginFromFileConfig>>,
+    pub filter_plugin: Option<Vec<FilterPluginFromFileConfig>>,
     pub mongo_plugin: Option<Vec<MongoPluginFromFileConfig>>,
     pub postgres_plugin: Option<Vec<PostgresPluginFromFileConfig>>,
     pub postgres_sea_plugin: Option<Vec<PostgresSeaPluginFromFileConfig>>,
     pub postgres_x_plugin: Option<Vec<PostgresXPluginFromFileConfig>>,
     pub print_plugin: Option<Vec<PrintPluginFromFileConfig>>,
     pub sqlite_plugin: Option<Vec<SqlitePluginFromFileConfig>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct FilterPluginFromFileConfig {
+    pub meta: FilterPluginMeta,
+    pub config: FilterPluginConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -196,6 +204,20 @@ mod test {
                 port: 8080,
             },
             plugins: Some(PluginsConfig {
+                filter_plugin: Some(vec![FilterPluginFromFileConfig {
+                    meta: FilterPluginMeta {
+                        name: "filter_plugin".to_string(),
+                        group: "filter".to_string(),
+                    },
+                    config: FilterPluginConfig {
+                        webhook_url: url::Url::parse("http://localhost:8080").unwrap(),
+                        group_labels: vec![],
+                        common_labels: vec![],
+                        common_annotations: vec![],
+                        alerts_labels: vec![],
+                        alerts_annotations: vec![],
+                    },
+                }]),
                 file_plugin: Some(vec![
                     FilePluginFromFileConfig {
                         meta: FilePluginMeta {

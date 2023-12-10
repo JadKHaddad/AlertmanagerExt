@@ -5,6 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[dev-dependencies]
+serde_yaml = { workspace = true }
+
 [dependencies]
 push_definitions = { path = "../../push/push_definitions" }
 plugins_definitions = { path = "../plugins_definitions" }
@@ -13,9 +16,8 @@ thiserror = { workspace = true }
 async-trait = { workspace = true }
 tracing = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 schemars = { workspace = true }
-regex = "1.10.2"
-url = { version = "2.5.0", features = ["serde"] }
-reqwest = "0.11.22"
+url = { workspace = true }
 serde_with = { workspace = true }
+regex = "1.10.2"
+reqwest = { version = "0.11.22", features = ["json"] }

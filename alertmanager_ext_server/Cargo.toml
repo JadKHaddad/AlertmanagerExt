@@ -8,6 +8,7 @@ edition = "2021"
 [dev-dependencies]
 axum-test = "13.4.1"
 random_models_generator = { path = "../models_utilities/random_models_generator" }
+url = { workspace = true }
 
 [dependencies]
 models = { path = "../models" }
@@ -20,6 +21,7 @@ mongo_plugin = { path = "../plugins/mongo_plugin" }
 sqlite_plugin = { path = "../plugins/sqlite_plugin" }
 file_plugin = { path = "../plugins/file_plugin" }
 print_plugin = { path = "../plugins/print_plugin" }
+filter_plugin = { path = "../plugins/filter_plugin" }
 tower = { workspace = true }
 tower-http = { workspace = true }
 tracing = { workspace = true }

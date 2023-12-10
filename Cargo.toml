@@ -50,3 +50,4 @@ prometheus-client = "0.22.0"
 chrono = { version = "0.4.31", features = ["serde"] }
 rand = "0.8.5"
 dotenv = "0.15.0"
+url = { version = "2.5.0", features = ["serde"] }
