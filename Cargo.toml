@@ -1,8 +1,8 @@
 [workspace]
-resolver = "2"
-default-members = ["alertmanager_ext_server"]
 members = [
     "models",
+    "models_utilities/random_models_generator",
+    "models_utilities/jinja_renderer",
     "push/push_definitions",
     "pull/pull_definitions",
     "alertmanager_ext_server",
@@ -18,6 +18,8 @@ members = [
     "plugins/ntfy_plugin",
     "plugins/file_plugin",
 ]
+resolver = "2"
+default-members = ["alertmanager_ext_server"]
 
 [profile.dev.package.sqlx-macros]
 opt-level = 3

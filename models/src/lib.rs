@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use utoipa::ToSchema;
 
-pub mod utils;
-
 #[derive(JsonSchema, Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 /// Alertmanager webhook payload

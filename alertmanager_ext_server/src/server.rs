@@ -249,7 +249,7 @@ async fn shutdown_signal() {
 mod tests {
     use super::*;
     use axum_test::TestServer;
-    use models::utils::generate_random_alertmanager_pushes;
+    use random_models_generator::generate_random_alertmanager_pushes;
     use tracing_test::traced_test;
 
     #[ignore]

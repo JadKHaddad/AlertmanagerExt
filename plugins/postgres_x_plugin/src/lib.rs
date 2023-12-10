@@ -52,9 +52,9 @@ impl PostgresXPlugin {
 #[cfg(test)]
 mod test {
     use super::*;
-    use models::utils::generate_random_alertmanager_pushes;
     use pull_definitions::{Pull, PullAlertsFilter};
     use push_definitions::Push;
+    use random_models_generator::generate_random_alertmanager_pushes;
     use tracing_test::traced_test;
 
     async fn create_and_init_plugin() -> PostgresXPlugin {

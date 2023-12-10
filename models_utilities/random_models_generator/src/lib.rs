@@ -1,5 +1,5 @@
-use crate::{Alert, AlertmanagerPush, Status};
 use chrono::Utc;
+use models::{Alert, AlertmanagerPush, Status};
 use rand::{distributions::Alphanumeric, Rng};
 use std::collections::BTreeMap;
 
@@ -13,6 +13,13 @@ fn generate_random_string() -> String {
 
 fn generate_uuid() -> String {
     uuid::Uuid::new_v4().to_string()
+}
+
+fn generate_random_btreemap_with_alertname_key() -> BTreeMap<String, String> {
+    let mut map = BTreeMap::new();
+    map.insert("alertname".to_string(), generate_random_string());
+    map.extend(generate_random_btreemap());
+    map
 }
 
 fn generate_random_btreemap() -> BTreeMap<String, String> {
@@ -48,7 +55,7 @@ fn generate_random_alert(n: usize) -> Alert {
         } else {
             Status::Firing
         },
-        labels: generate_random_btreemap(),
+        labels: generate_random_btreemap_with_alertname_key(),
         annotations: generate_random_btreemap(),
         starts_at: generate_random_naive_date_time(),
         ends_at: generate_option_random_naive_date_time(),

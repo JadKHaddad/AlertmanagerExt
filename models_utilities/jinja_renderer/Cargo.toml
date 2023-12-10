@@ -1,0 +1,13 @@
+[package]
+name = "jinja_renderer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dev-dependencies]
+random_models_generator = { path = "../random_models_generator" }
+
+[dependencies]
+models = { path = "../../models" }
+minijinja = { version = "1.0.10", features = ["builtins"] }
