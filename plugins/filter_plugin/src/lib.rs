@@ -1,9 +1,10 @@
-use std::collections::BTreeMap;
-
 use error::NewFilterPluginError;
 use models::AlertmanagerPush;
+use regex::Error as RegexError;
+use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 mod error;
 mod impls;
@@ -51,6 +52,116 @@ pub struct FilterPluginConfig {
     alerts_annotations: Option<Vec<Action>>,
 }
 
+#[derive(Debug, Clone)]
+pub struct PreparedDropRegexAction {
+    pub regex: Regex,
+    pub target: RegexActionTarget,
+}
+
+impl TryFrom<DropRegexAction> for PreparedDropRegexAction {
+    type Error = RegexError;
+
+    fn try_from(value: DropRegexAction) -> Result<Self, Self::Error> {
+        Ok(Self {
+            regex: Regex::new(&value.pattern)?,
+            target: value.target,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PreparedReplaceRegexAction {
+    pub regex: Regex,
+    pub target: RegexActionTarget,
+    pub replace_with: String,
+    pub replacement_target: RegexActionTarget,
+}
+
+impl TryFrom<ReplaceRegexAction> for PreparedReplaceRegexAction {
+    type Error = RegexError;
+
+    fn try_from(value: ReplaceRegexAction) -> Result<Self, Self::Error> {
+        Ok(Self {
+            regex: Regex::new(&value.pattern)?,
+            target: value.target,
+            replace_with: value.replace_with,
+            replacement_target: value.replacement_target,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum PreparedAction {
+    Drop(PreparedDropRegexAction),
+    Replace(PreparedReplaceRegexAction),
+    Add(AddAction),
+}
+
+impl TryFrom<Action> for PreparedAction {
+    type Error = RegexError;
+
+    fn try_from(value: Action) -> Result<Self, Self::Error> {
+        match value {
+            Action::Drop(drop_regex_action) => Ok(PreparedAction::Drop(
+                PreparedDropRegexAction::try_from(drop_regex_action)?,
+            )),
+            Action::Replace(replace_regex_action) => Ok(PreparedAction::Replace(
+                PreparedReplaceRegexAction::try_from(replace_regex_action)?,
+            )),
+            Action::Add(add_action) => Ok(PreparedAction::Add(add_action)),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PreparedFilterPluginConfig {
+    group_labels: Vec<PreparedAction>,
+    common_labels: Vec<PreparedAction>,
+    common_annotations: Vec<PreparedAction>,
+    alerts_labels: Vec<PreparedAction>,
+    alerts_annotations: Vec<PreparedAction>,
+}
+
+impl PreparedFilterPluginConfig {
+    fn try_from_opt_vec_action(
+        value: Option<Vec<Action>>,
+    ) -> Result<Vec<PreparedAction>, RegexError> {
+        Ok(value
+            .map(|actions| {
+                actions
+                    .into_iter()
+                    .map(PreparedAction::try_from)
+                    .collect::<Result<Vec<PreparedAction>, RegexError>>()
+            })
+            .transpose()?
+            .unwrap_or_default())
+    }
+}
+
+impl TryFrom<FilterPluginConfig> for PreparedFilterPluginConfig {
+    type Error = RegexError;
+
+    fn try_from(value: FilterPluginConfig) -> Result<Self, Self::Error> {
+        let group_labels = PreparedFilterPluginConfig::try_from_opt_vec_action(value.group_labels)?;
+        let common_labels =
+            PreparedFilterPluginConfig::try_from_opt_vec_action(value.common_labels)?;
+        let common_annotations =
+            PreparedFilterPluginConfig::try_from_opt_vec_action(value.common_annotations)?;
+        let alerts_labels =
+            PreparedFilterPluginConfig::try_from_opt_vec_action(value.alerts_labels)?;
+        let alerts_annotations =
+            PreparedFilterPluginConfig::try_from_opt_vec_action(value.alerts_annotations)?;
+
+        Ok(Self {
+            group_labels,
+            common_labels,
+            common_annotations,
+            alerts_labels,
+            alerts_annotations,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Metadata for the Filter plugin
 pub struct FilterPluginMeta {
@@ -65,7 +176,7 @@ pub struct FilterPlugin {
     /// Meta information for the plugin
     meta: FilterPluginMeta,
     /// Configuration for the plugin
-    config: FilterPluginConfig,
+    config: PreparedFilterPluginConfig,
 }
 
 impl FilterPlugin {
@@ -73,60 +184,54 @@ impl FilterPlugin {
         meta: FilterPluginMeta,
         config: FilterPluginConfig,
     ) -> Result<Self, NewFilterPluginError> {
-        Ok(Self { meta, config })
+        let prepared_conmfig = PreparedFilterPluginConfig::try_from(config)?;
+        Ok(Self {
+            meta,
+            config: prepared_conmfig,
+        })
     }
 
     fn filter(&self, push: &AlertmanagerPush) -> AlertmanagerPush {
         let mut push = push.clone();
-        if let Some(ref actions) = self.config.group_labels {
-            push.group_labels = Self::filter_btree_map(actions, push.group_labels);
-        }
-        if let Some(ref actions) = self.config.common_labels {
-            push.common_labels = Self::filter_btree_map(actions, push.common_labels);
-        }
-        if let Some(ref actions) = self.config.common_annotations {
-            push.common_annotations = Self::filter_btree_map(actions, push.common_annotations);
-        }
-        if let Some(ref actions) = self.config.alerts_labels {
-            push.alerts = push
-                .alerts
-                .into_iter()
-                .map(|alert| {
-                    let mut alert = alert;
-                    alert.labels = Self::filter_btree_map(actions, alert.labels);
-                    alert
-                })
-                .collect();
-        }
+
+        push.group_labels = Self::filter_btree_map(&self.config.group_labels, push.group_labels);
+        push.common_labels = Self::filter_btree_map(&self.config.common_labels, push.common_labels);
+        push.common_annotations =
+            Self::filter_btree_map(&self.config.common_annotations, push.common_annotations);
+
+        push.alerts = push
+            .alerts
+            .into_iter()
+            .map(|alert| {
+                let mut alert = alert;
+                alert.labels = Self::filter_btree_map(&self.config.alerts_labels, alert.labels);
+                alert.annotations =
+                    Self::filter_btree_map(&self.config.alerts_annotations, alert.annotations);
+                alert
+            })
+            .collect();
 
         push
     }
 
     fn filter_btree_map(
-        actions: &Vec<Action>,
+        actions: &Vec<PreparedAction>,
         mut btree_map: BTreeMap<String, String>,
     ) -> BTreeMap<String, String> {
         for action in actions {
             match action {
-                Action::Drop(regex_action) => {
+                PreparedAction::Drop(regex_action) => {
                     btree_map.retain(|key, value| match regex_action.target {
-                        RegexActionTarget::Name => !regex::Regex::new(&regex_action.pattern)
-                            .unwrap()
-                            .is_match(key),
-                        RegexActionTarget::Value => !regex::Regex::new(&regex_action.pattern)
-                            .unwrap()
-                            .is_match(value),
+                        RegexActionTarget::Name => !regex_action.regex.is_match(key),
+                        RegexActionTarget::Value => !regex_action.regex.is_match(value),
                     });
                 }
-                Action::Replace(regex_action) => {
+                PreparedAction::Replace(regex_action) => {
                     btree_map = btree_map
                         .into_iter()
                         .map(|(key, value)| match regex_action.target {
                             RegexActionTarget::Name => {
-                                if regex::Regex::new(&regex_action.pattern)
-                                    .unwrap()
-                                    .is_match(&key)
-                                {
+                                if regex_action.regex.is_match(&key) {
                                     match regex_action.replacement_target {
                                         RegexActionTarget::Name => {
                                             (regex_action.replace_with.clone(), value)
@@ -140,10 +245,7 @@ impl FilterPlugin {
                                 }
                             }
                             RegexActionTarget::Value => {
-                                if regex::Regex::new(&regex_action.pattern)
-                                    .unwrap()
-                                    .is_match(&value)
-                                {
+                                if regex_action.regex.is_match(&value) {
                                     match regex_action.replacement_target {
                                         RegexActionTarget::Name => {
                                             (regex_action.replace_with.clone(), value)
@@ -159,7 +261,7 @@ impl FilterPlugin {
                         })
                         .collect();
                 }
-                Action::Add(add_action) => {
+                PreparedAction::Add(add_action) => {
                     btree_map.insert(add_action.name.clone(), add_action.value.clone());
                 }
             }
@@ -244,7 +346,8 @@ mod test {
                 name: "test".to_string(),
                 group: "test".to_string(),
             },
-            config,
+            config: PreparedFilterPluginConfig::try_from(config)
+                .expect("I guess i'm bad at regex :D"),
         };
 
         let push = plugin.filter(&push);
