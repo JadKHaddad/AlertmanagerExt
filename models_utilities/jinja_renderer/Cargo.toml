@@ -12,5 +12,5 @@ random_models_generator = { path = "../random_models_generator" }
 models = { path = "../../models" }
 tokio = { workspace = true }
 thiserror = { workspace = true }
-minijinja = { version = "1.0.10", features = ["builtins"] }
+minijinja = { version = "1.0.10", features = ["builtins", "loader"] }
 minijinja-contrib = { version = "1.0.10", features = ["datetime"] }
