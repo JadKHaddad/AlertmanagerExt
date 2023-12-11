@@ -64,14 +64,14 @@ pub enum RegexActionTarget {
 pub struct DropRegexAction {
     #[serde(flatten)]
     pub regex: RegexHolder,
-    pub target: RegexActionTarget,
+    pub regex_target: RegexActionTarget,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ReplaceRegexAction {
     #[serde(flatten)]
     pub regex: RegexHolder,
-    pub target: RegexActionTarget,
+    pub regex_target: RegexActionTarget,
     pub replace_with: String,
     pub replacement_target: RegexActionTarget,
 }
@@ -83,7 +83,7 @@ pub struct AddAction {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "type")]
+#[serde(tag = "action")]
 pub enum Action {
     Drop(DropRegexAction),
     Replace(ReplaceRegexAction),
@@ -128,13 +128,13 @@ impl FilterPlugin {
 
     fn add_signature(&self, push: &mut AlertmanagerPush) {
         push.common_labels
-            .insert("filtered".to_string(), self.name().to_string());
+            .insert(self.name().to_string(), "filtered".to_string());
     }
 
     fn is_signature_present(&self, push: &AlertmanagerPush) -> bool {
         push.common_labels
-            .get("filtered")
-            .map(|value| value == self.name())
+            .get(self.name())
+            .map(|value| value == "filtered")
             .unwrap_or(false)
     }
 
@@ -168,7 +168,7 @@ impl FilterPlugin {
         for action in actions {
             match action {
                 Action::Drop(regex_action) => {
-                    btree_map.retain(|key, value| match regex_action.target {
+                    btree_map.retain(|key, value| match regex_action.regex_target {
                         RegexActionTarget::Name => !regex_action.regex.is_match(key),
                         RegexActionTarget::Value => !regex_action.regex.is_match(value),
                     });
@@ -176,7 +176,7 @@ impl FilterPlugin {
                 Action::Replace(regex_action) => {
                     btree_map = btree_map
                         .into_iter()
-                        .map(|(key, value)| match regex_action.target {
+                        .map(|(key, value)| match regex_action.regex_target {
                             RegexActionTarget::Name => {
                                 if regex_action.regex.is_match(&key) {
                                     match regex_action.replacement_target {
@@ -229,33 +229,33 @@ mod test {
             group_labels: vec![
                 Action::Drop(DropRegexAction {
                     regex: RegexHolder::from_str("^foo$").unwrap(),
-                    target: RegexActionTarget::Name,
+                    regex_target: RegexActionTarget::Name,
                 }),
                 Action::Drop(DropRegexAction {
                     regex: RegexHolder::from_str("^warning.*").unwrap(),
-                    target: RegexActionTarget::Value,
+                    regex_target: RegexActionTarget::Value,
                 }),
                 Action::Replace(ReplaceRegexAction {
                     regex: RegexHolder::from_str("^inst.*").unwrap(),
-                    target: RegexActionTarget::Name,
+                    regex_target: RegexActionTarget::Name,
                     replace_with: "instagram".to_string(),
                     replacement_target: RegexActionTarget::Name,
                 }),
                 Action::Replace(ReplaceRegexAction {
                     regex: RegexHolder::from_str("^node$").unwrap(),
-                    target: RegexActionTarget::Value,
+                    regex_target: RegexActionTarget::Value,
                     replace_with: "christmas".to_string(),
                     replacement_target: RegexActionTarget::Value,
                 }),
                 Action::Replace(ReplaceRegexAction {
                     regex: RegexHolder::from_str("^replace_my_value$").unwrap(),
-                    target: RegexActionTarget::Name,
+                    regex_target: RegexActionTarget::Name,
                     replace_with: "replaced!".to_string(),
                     replacement_target: RegexActionTarget::Value,
                 }),
                 Action::Replace(ReplaceRegexAction {
                     regex: RegexHolder::from_str("^replace_my_name$").unwrap(),
-                    target: RegexActionTarget::Value,
+                    regex_target: RegexActionTarget::Value,
                     replace_with: "replaced!".to_string(),
                     replacement_target: RegexActionTarget::Name,
                 }),

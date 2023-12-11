@@ -25,26 +25,26 @@ plugins:
       config:
         webhook_url: http://localhost:5050/push
         group_labels:
-          - type: Drop
+          - action: Drop
             regex: ^.*$
-            target: Name
-          - type: Add
+            regex_target: Name
+          - action: Add
             name: Label1
             value: Value1
         common_labels:
-          - type: Drop
+          - action: Drop
             regex: ^.*$
-            target: Name
+            regex_target: Name
         common_annotations:
-          - type: Replace
+          - action: Replace
             regex: ^.*$
-            target: Value
+            regex_target: Value
             replace_with: replaced Value!
             replacement_target: Value
         alerts_labels:
-          - type: Drop
+          - action: Drop
             regex: ^.*$
-            target: Name
+            regex_target: Name
         alerts_annotations: []
 
   postgres_plugin:
