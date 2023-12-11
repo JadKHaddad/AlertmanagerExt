@@ -6,6 +6,7 @@ members = [
     "push/push_definitions",
     "pull/pull_definitions",
     "alertmanager_ext_server",
+    "plugins/plugins_filter",
     "plugins/plugins_definitions",
     "plugins/postgres_plugin",
     "plugins/postgres_x_plugin",

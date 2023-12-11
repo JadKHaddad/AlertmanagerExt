@@ -1,0 +1,70 @@
+use crate::ast::{Expr, SingleOp, MultipleOp};
+
+grammar;
+
+pub Expr: Box<Expr<'input>> = {
+    Expr ExprOp Factor => Box::new(Expr::<'input>::MultipleOp(<>)),
+    Factor,
+};
+
+ExprOp: MultipleOp = {
+    "or" => MultipleOp::Or,
+    "||" => MultipleOp::Or,
+};
+
+Factor: Box<Expr<'input>> = {
+    Factor FactorOp TermOrNotTerm => Box::new(Expr::<'input>::MultipleOp(<>)),
+    TermOrNotTerm,
+};
+
+FactorOp: MultipleOp = {
+    "and" => MultipleOp::And,
+    "&&" => MultipleOp::And,
+};
+
+Term: Box<Expr<'input>> = {
+    Name => Box::new(Expr::<'input>::Name(<>)),
+    Group => Box::new(Expr::<'input>::Group(<>)),
+    Type => Box::new(Expr::<'input>::Type(<>)),
+    "(" <Expr> ")"
+};
+
+TermOrNotTerm: Box<Expr<'input>> = {
+    NotOp <Term> => Box::new(Expr::<'input>::Not(<>)),
+    Term
+};
+
+NotOp: () = {
+    "not" => (),
+    "!" => ()
+};
+
+Name: SingleOp<'input> = {
+    "name" <SingleOpCode>,
+}
+
+Group: SingleOp<'input> = {
+    "group" <SingleOpCode>,
+}
+
+Type: SingleOp<'input> = {
+    "type" <SingleOpCode>,
+}
+
+SingleOpCode: SingleOp<'input> = {
+    "is" <Str>  => SingleOp::<'input>::Is(<>),
+    "in" "[" <Strs> "]" => SingleOp::<'input>::In(<>),
+}
+
+Str: &'input str = {
+    <s:r"[A-Za-z0-9_-]+"> => s
+}
+
+Strs: Vec<&'input str> = {
+    <Str> => vec![<>],
+    <strings:Strs> "," <string:Str> => {
+        let mut strings = strings;
+        strings.push(string);
+        strings
+    }
+}
