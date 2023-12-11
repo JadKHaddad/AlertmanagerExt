@@ -66,7 +66,7 @@ where
         let query = ApiQuery::<PluginFilterQuery>::from_request_parts(parts, _state).await?;
 
         match query.0.filter {
-            None => return Ok(ApiPluginFilterQuery(None)),
+            None => Ok(ApiPluginFilterQuery(None)),
             Some(filter) => {
                 let exp = plugins_filter::filter::ExprParser::new()
                     .parse(&filter)

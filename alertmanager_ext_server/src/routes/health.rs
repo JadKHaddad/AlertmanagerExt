@@ -156,17 +156,14 @@ pub async fn plugin_health(
     let mut plugin_health_responses = vec![];
     let mut healthy_plugins_count: usize = 0;
 
-    let affected_plugins = if let Some(ref exp) = exp {
+    let affected_plugins: Vec<&Arc<dyn PushAndPlugin>> = if let Some(ref exp) = exp {
         state
             .plugins
             .iter()
             .filter(|plugin| exp.is_match(&plugin.meta()))
-            .collect::<Vec<&Arc<dyn PushAndPlugin>>>()
+            .collect()
     } else {
-        state
-            .plugins
-            .iter()
-            .collect::<Vec<&Arc<dyn PushAndPlugin>>>()
+        state.plugins.iter().collect()
     };
 
     if affected_plugins.is_empty() {
