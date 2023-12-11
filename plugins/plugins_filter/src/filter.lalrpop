@@ -2,8 +2,8 @@ use crate::ast::{Expr, SingleOp, MultipleOp};
 
 grammar;
 
-pub Expr: Box<Expr<'input>> = {
-    Expr ExprOp Factor => Box::new(Expr::<'input>::MultipleOp(<>)),
+pub Expr: Box<Expr> = {
+    Expr ExprOp Factor => Box::new(Expr::MultipleOp(<>)),
     Factor,
 };
 
@@ -12,8 +12,8 @@ ExprOp: MultipleOp = {
     "||" => MultipleOp::Or,
 };
 
-Factor: Box<Expr<'input>> = {
-    Factor FactorOp TermOrNotTerm => Box::new(Expr::<'input>::MultipleOp(<>)),
+Factor: Box<Expr> = {
+    Factor FactorOp TermOrNotTerm => Box::new(Expr::MultipleOp(<>)),
     TermOrNotTerm,
 };
 
@@ -22,15 +22,15 @@ FactorOp: MultipleOp = {
     "&&" => MultipleOp::And,
 };
 
-Term: Box<Expr<'input>> = {
-    Name => Box::new(Expr::<'input>::Name(<>)),
-    Group => Box::new(Expr::<'input>::Group(<>)),
-    Type => Box::new(Expr::<'input>::Type(<>)),
+Term: Box<Expr> = {
+    Name => Box::new(Expr::Name(<>)),
+    Group => Box::new(Expr::Group(<>)),
+    Type => Box::new(Expr::Type(<>)),
     "(" <Expr> ")"
 };
 
-TermOrNotTerm: Box<Expr<'input>> = {
-    NotOp <Term> => Box::new(Expr::<'input>::Not(<>)),
+TermOrNotTerm: Box<Expr> = {
+    NotOp <Term> => Box::new(Expr::Not(<>)),
     Term
 };
 
@@ -39,28 +39,28 @@ NotOp: () = {
     "!" => ()
 };
 
-Name: SingleOp<'input> = {
+Name: SingleOp = {
     "name" <SingleOpCode>,
 }
 
-Group: SingleOp<'input> = {
+Group: SingleOp = {
     "group" <SingleOpCode>,
 }
 
-Type: SingleOp<'input> = {
+Type: SingleOp = {
     "type" <SingleOpCode>,
 }
 
-SingleOpCode: SingleOp<'input> = {
-    "is" <Str>  => SingleOp::<'input>::Is(<>),
-    "in" "[" <Strs> "]" => SingleOp::<'input>::In(<>),
+SingleOpCode: SingleOp = {
+    "is" <Str>  => SingleOp::Is(<>),
+    "in" "[" <Strs> "]" => SingleOp::In(<>),
 }
 
-Str: &'input str = {
-    <s:r"[A-Za-z0-9_-]+"> => s
+Str: String = {
+    <s:r"[A-Za-z0-9_-]+"> => s.to_string()
 }
 
-Strs: Vec<&'input str> = {
+Strs: Vec<String> = {
     <Str> => vec![<>],
     <strings:Strs> "," <string:Str> => {
         let mut strings = strings;

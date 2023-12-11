@@ -1,6 +1,5 @@
-use crate::extractors::query::ApiQuery;
+use crate::extractors::query::ApiPluginFilterQuery;
 use crate::routes::models::PluginResponseMeta;
-use crate::routes::utils;
 use crate::state::ApiState;
 use crate::traits::{HasStatusCode, PushAndPlugin};
 use axum::extract::State;
@@ -150,14 +149,25 @@ async fn match_plugin_health(plugin: &Arc<dyn PushAndPlugin>) -> PlugingHealthRe
 #[tracing::instrument(name = "plugin_health", skip_all)]
 pub async fn plugin_health(
     State(state): State<ApiState>,
-    ApiQuery(filter_query): ApiQuery<PluginFilterQuery>,
+    ApiPluginFilterQuery(exp): ApiPluginFilterQuery,
 ) -> PluginsHealthResponse {
     tracing::trace!("Health check for plugins");
 
     let mut plugin_health_responses = vec![];
     let mut healthy_plugins_count: usize = 0;
 
-    let affected_plugins = utils::filter_plugins(&state.plugins, &filter_query);
+    let affected_plugins = if let Some(ref exp) = exp {
+        state
+            .plugins
+            .iter()
+            .filter(|plugin| exp.is_match(&plugin.meta()))
+            .collect::<Vec<&Arc<dyn PushAndPlugin>>>()
+    } else {
+        state
+            .plugins
+            .iter()
+            .collect::<Vec<&Arc<dyn PushAndPlugin>>>()
+    };
 
     if affected_plugins.is_empty() {
         return PluginsHealthResponse {

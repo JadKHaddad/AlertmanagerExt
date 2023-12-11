@@ -30,6 +30,8 @@ pub enum ErrorResponseType {
     PayloadInvalid(PayloadInvalid),
     /// Query is invalid
     QueryInvalid(QueryInvalid),
+    /// Filter is invalid
+    PluginFilterInvalid,
     /// Path is invalid
     PathInvalid(PathInvalid),
     /// Internal server error
@@ -90,6 +92,7 @@ impl HasStatusCode for ErrorResponseType {
         match self {
             ErrorResponseType::PayloadInvalid(payload_invalid) => payload_invalid.status_code,
             ErrorResponseType::QueryInvalid(query_invalid) => query_invalid.status_code,
+            ErrorResponseType::PluginFilterInvalid => StatusCode::UNPROCESSABLE_ENTITY,
             ErrorResponseType::PathInvalid(path_invalid) => path_invalid.status_code,
             ErrorResponseType::InternalServerError { .. } => StatusCode::INTERNAL_SERVER_ERROR,
             ErrorResponseType::NotFound => StatusCode::NOT_FOUND,

@@ -30,12 +30,6 @@ impl<'a> From<PluginMeta<'a>> for PluginResponseMeta {
 /// Query filter for plugins
 ///
 /// This is used to filter plugins by name, group or type.
-/// If none of the fields are specified, all plugins are assumed.
 pub struct PluginFilterQuery {
-    /// Name of the plugin
-    pub name: Option<String>,
-    /// Group of the plugin
-    pub group: Option<String>,
-    /// Type of the plugin
-    pub type_: Option<String>,
+    pub filter: Option<String>,
 }

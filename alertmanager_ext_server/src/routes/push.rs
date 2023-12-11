@@ -1,7 +1,8 @@
+use super::models::PluginFilterQuery;
+use super::models::PluginResponseMeta;
 use crate::{
-    extractors::{json::ApiJson, query::ApiQuery},
+    extractors::{json::ApiJson, query::ApiPluginFilterQuery},
     prometheus_client::PushLabel,
-    routes::utils,
     state::ApiState,
     traits::{HasStatusCode, PushAndPlugin},
 };
@@ -12,8 +13,6 @@ use serde::Serialize;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 use utoipa::ToSchema;
-
-use super::models::{PluginFilterQuery, PluginResponseMeta};
 
 #[derive(Debug, Clone, Serialize, JsonSchema, PartialEq, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -206,12 +205,20 @@ async fn push_async(
 #[tracing::instrument(name = "push", skip_all, fields(group_key = alertmanager_push.group_key))]
 pub async fn push(
     State(state): State<ApiState>,
-    ApiQuery(filter_query): ApiQuery<PluginFilterQuery>,
+    ApiPluginFilterQuery(exp): ApiPluginFilterQuery,
     ApiJson(alertmanager_push): ApiJson<AlertmanagerPush>,
 ) -> PushResponse {
     tracing::trace!("Pushing alerts to plugins.");
 
-    let affected_plugins = utils::filter_plugins(&state.plugins, &filter_query);
+    let affected_plugins = if let Some(ref exp) = exp {
+        state
+            .plugins
+            .iter()
+            .filter(|plugin| exp.is_match(&plugin.meta()))
+            .collect()
+    } else {
+        state.plugins.iter().collect()
+    };
 
     push_async(&state, affected_plugins, &alertmanager_push).await
 }

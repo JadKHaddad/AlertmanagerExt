@@ -101,6 +101,9 @@ impl OpenApi for OpenApiDocFinalizer {
 
                 // Error returned by our custom middleware
                 add_error_response(operation, String::from("405"), "Method not allowed.");
+
+                // Error returned by ApiPluginFilterQuery extractor
+                add_error_response(operation, String::from("422"), "Invalid filter.");
             }
         }
 

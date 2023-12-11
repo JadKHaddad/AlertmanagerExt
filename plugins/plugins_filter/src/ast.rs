@@ -1,18 +1,18 @@
-use plugins_definitions::Plugin;
+use plugins_definitions::PluginMeta;
 
 #[derive(Debug)]
-pub enum Expr<'a> {
-    Name(SingleOp<'a>),
-    Group(SingleOp<'a>),
-    Type(SingleOp<'a>),
-    MultipleOp(Box<Expr<'a>>, MultipleOp, Box<Expr<'a>>),
-    Not(Box<Expr<'a>>),
+pub enum Expr {
+    Name(SingleOp),
+    Group(SingleOp),
+    Type(SingleOp),
+    MultipleOp(Box<Expr>, MultipleOp, Box<Expr>),
+    Not(Box<Expr>),
 }
 
 #[derive(Debug)]
-pub enum SingleOp<'a> {
-    Is(&'a str),
-    In(Vec<&'a str>),
+pub enum SingleOp {
+    Is(String),
+    In(Vec<String>),
 }
 
 #[derive(Debug)]
@@ -20,27 +20,26 @@ pub enum MultipleOp {
     And,
     Or,
 }
-
-impl<'a> Expr<'a> {
-    pub fn is_match(&self, plugin: &impl Plugin) -> bool {
+impl Expr {
+    pub fn is_match(&self, meta: &PluginMeta) -> bool {
         match self {
-            Expr::Name(op) => op.is_match(plugin.name()),
-            Expr::Group(op) => op.is_match(plugin.group()),
-            Expr::Type(op) => op.is_match(plugin.type_()),
+            Expr::Name(op) => op.is_match(meta.name),
+            Expr::Group(op) => op.is_match(meta.group),
+            Expr::Type(op) => op.is_match(meta.type_),
             Expr::MultipleOp(l, op, r) => match op {
-                MultipleOp::And => l.is_match(plugin) && r.is_match(plugin),
-                MultipleOp::Or => l.is_match(plugin) || r.is_match(plugin),
+                MultipleOp::And => l.is_match(meta) && r.is_match(meta),
+                MultipleOp::Or => l.is_match(meta) || r.is_match(meta),
             },
-            Expr::Not(expr) => !expr.is_match(plugin),
+            Expr::Not(expr) => !expr.is_match(meta),
         }
     }
 }
 
-impl<'a> SingleOp<'a> {
+impl SingleOp {
     pub fn is_match(&self, value: &str) -> bool {
         match self {
-            SingleOp::Is(v) => v == &value,
-            SingleOp::In(vs) => vs.contains(&value),
+            SingleOp::Is(v) => v == value,
+            SingleOp::In(vs) => vs.contains(&value.to_string()),
         }
     }
 }
