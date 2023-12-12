@@ -23,7 +23,7 @@ impl Push for PostgresSeaPlugin {
         Migrator::up(&self.db, None)
             .await
             .map_err(|error| InitializeError {
-                reason: error.to_string(),
+                error: error.into(),
             })?;
 
         tracing::trace!("Successfully initialized.");

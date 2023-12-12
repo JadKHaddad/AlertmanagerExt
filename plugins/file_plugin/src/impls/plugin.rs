@@ -17,7 +17,7 @@ impl Plugin for FilePlugin {
         tracing::trace!("Checking health.");
 
         self.dir_exists().map_err(|error| HealthError {
-            reason: error.to_string(),
+            error: error.into(),
         })?;
 
         tracing::trace!("Successfully checked health.");

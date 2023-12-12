@@ -27,12 +27,12 @@ impl Push for PrintPlugin {
             PrintType::Json => serde_json::to_vec(alertmanager_push)
                 .map_err(ToStringError::Json)
                 .map_err(|error| PushError {
-                    reason: error.to_string(),
+                    error: error.into(),
                 })?,
             PrintType::Yaml => serde_yaml::to_string(alertmanager_push)
                 .map_err(ToStringError::Yaml)
                 .map_err(|error| PushError {
-                    reason: error.to_string(),
+                    error: error.into(),
                 })?
                 .into_bytes(),
             PrintType::Jinja { .. } => {
@@ -43,14 +43,14 @@ impl Push for PrintPlugin {
                         reason: "Jinja renderer not initialized".to_string(),
                     })
                     .map_err(|error| PushError {
-                        reason: error.to_string(),
+                        error: error.into(),
                     })?;
 
                 jinja_renderer
                     .render(alertmanager_push)
                     .map_err(ToStringError::Jinja)
                     .map_err(|error| PushError {
-                        reason: error.to_string(),
+                        error: error.into(),
                     })?
                     .into_bytes()
             }
@@ -59,7 +59,7 @@ impl Push for PrintPlugin {
         bytes.push(b'\n');
 
         stdout.write_all(&bytes).await.map_err(|error| PushError {
-            reason: error.to_string(),
+            error: error.into(),
         })?;
 
         tracing::trace!("Successfully pushed.");

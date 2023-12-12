@@ -2,10 +2,12 @@ use async_trait::async_trait;
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
-#[error("Plugin health check failed: {reason}")]
+#[error("Plugin health check failed: {error}")]
 /// Error returned by the health check
 pub struct HealthError {
-    pub reason: String,
+    #[from]
+    #[source]
+    pub error: Box<dyn std::error::Error + Send + Sync>,
 }
 
 #[derive(Debug, Clone)]

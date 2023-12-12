@@ -18,11 +18,11 @@ impl Plugin for PostgresXPlugin {
         tracing::trace!("Checking health.");
 
         let mut conn = self.pool.acquire().await.map_err(|error| HealthError {
-            reason: error.to_string(),
+            error: error.into(),
         })?;
 
         conn.ping().await.map_err(|error| HealthError {
-            reason: error.to_string(),
+            error: error.into(),
         })?;
 
         tracing::trace!("Successfully checked health.");

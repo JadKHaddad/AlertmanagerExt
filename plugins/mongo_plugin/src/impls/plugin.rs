@@ -21,7 +21,7 @@ impl Plugin for MongoPlugin {
             .run_command(doc! { "ping": 1 }, None)
             .await
             .map_err(|error| HealthError {
-                reason: error.to_string(),
+                error: error.into(),
             })?;
 
         tracing::trace!("Successfully checked health.");

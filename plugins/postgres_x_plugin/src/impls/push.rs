@@ -17,7 +17,7 @@ impl Push for PostgresXPlugin {
             .run(&self.pool)
             .await
             .map_err(|error| InitializeError {
-                reason: error.to_string(),
+                error: error.into(),
             })?;
 
         tracing::trace!("Successfully initialized.");

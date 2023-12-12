@@ -11,7 +11,7 @@ impl Push for FilePlugin {
         tracing::trace!("Initializing.");
 
         self.dir_exists().map_err(|error| InitializeError {
-            reason: error.to_string(),
+            error: error.into(),
         })?;
 
         tracing::trace!("Successfully initialized.");
@@ -27,13 +27,13 @@ impl Push for FilePlugin {
         let contents = self
             .to_string(alertmanager_push)
             .map_err(|error| PushError {
-                reason: error.to_string(),
+                error: error.into(),
             })?;
 
         tokio::fs::write(file_path, contents)
             .await
             .map_err(|error| PushError {
-                reason: error.to_string(),
+                error: error.into(),
             })?;
 
         tracing::trace!("Successfully pushed.");

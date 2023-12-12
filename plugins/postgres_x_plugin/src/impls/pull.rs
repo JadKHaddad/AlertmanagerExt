@@ -23,7 +23,7 @@ impl Pull for PostgresXPlugin {
             .fetch_all(&self.pool)
             .await
             .map_err(|error| PullError {
-                reason: error.to_string(),
+                error: error.into(),
             })?;
 
         tracing::trace!("Successfully pulled.");

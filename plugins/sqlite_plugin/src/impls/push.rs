@@ -16,7 +16,8 @@ impl Push for SqlitePlugin {
 
         // Always be nice and give memory back to the OS. ;)
         let config = self.config.take().ok_or_else(|| InitializeError {
-            reason: "Already initialized.".to_string(),
+            // TODO
+            error: std::io::Error::new(std::io::ErrorKind::Other, "Already initialized.").into(),
         })?;
 
         let connection_string = config.connection_string;
@@ -34,10 +35,10 @@ impl Push for SqlitePlugin {
         handle
             .await
             .map_err(|error| InitializeError {
-                reason: error.to_string(),
+                error: error.into(),
             })?
             .map_err(|error| InitializeError {
-                reason: format!("{:#}", error),
+                error: error.into(),
             })?;
 
         tracing::trace!("Successfully initialized.");

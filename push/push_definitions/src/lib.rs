@@ -3,15 +3,19 @@ use models::AlertmanagerPush;
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
-#[error("Plugin initialization failed: {reason}")]
+#[error("Plugin initialization failed: {error}")]
 pub struct InitializeError {
-    pub reason: String,
+    #[from]
+    #[source]
+    pub error: Box<dyn std::error::Error + Send + Sync>,
 }
 
 #[derive(ThisError, Debug)]
-#[error("Push failed: {reason}")]
+#[error("Push failed: {error}")]
 pub struct PushError {
-    pub reason: String,
+    #[from]
+    #[source]
+    pub error: Box<dyn std::error::Error + Send + Sync>,
 }
 
 #[async_trait]

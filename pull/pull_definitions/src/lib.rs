@@ -3,9 +3,11 @@ use models::StandAloneAlert;
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
-#[error("Pull failed: {reason}")]
+#[error("Pull failed: {error}")]
 pub struct PullError {
-    pub reason: String,
+    #[from]
+    #[source]
+    pub error: Box<dyn std::error::Error + Send + Sync>,
 }
 
 pub struct PullAlertsFilter {}

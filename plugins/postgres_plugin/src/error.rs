@@ -161,7 +161,7 @@ pub enum InternalPushError {
 impl From<InternalPushError> for PushError {
     fn from(error: InternalPushError) -> Self {
         Self {
-            reason: error.to_string(),
+            error: error.into(),
         }
     }
 }
@@ -193,7 +193,7 @@ pub enum InternalPullError {
 impl From<InternalPullError> for PullError {
     fn from(error: InternalPullError) -> Self {
         Self {
-            reason: error.to_string(),
+            error: error.into(),
         }
     }
 }

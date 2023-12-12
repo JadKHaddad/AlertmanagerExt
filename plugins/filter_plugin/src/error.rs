@@ -32,7 +32,7 @@ pub enum InternalPushError {
 impl From<InternalPushError> for PushError {
     fn from(error: InternalPushError) -> Self {
         Self {
-            reason: error.to_string(),
+            error: error.into(),
         }
     }
 }

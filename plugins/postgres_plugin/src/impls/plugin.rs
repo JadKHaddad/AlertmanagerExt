@@ -17,7 +17,7 @@ impl Plugin for PostgresPlugin {
         tracing::trace!("Checking health.");
 
         let _conn = self.pool.get().await.map_err(|error| HealthError {
-            reason: error.to_string(),
+            error: error.into(),
         })?;
 
         tracing::trace!("Successfully checked health.");
