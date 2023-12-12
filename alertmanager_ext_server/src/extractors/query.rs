@@ -1,5 +1,5 @@
 use crate::{
-    error_response::{ErrorResponse, ErrorResponseType, QueryInvalid},
+    error_response::{ErrorResponse, ErrorResponseType, PluginFilterInvalid, QueryInvalid},
     routes::models::PluginFilterQuery,
 };
 use async_trait::async_trait;
@@ -70,7 +70,11 @@ where
             Some(filter) => {
                 let exp = plugins_filter::filter::ExprParser::new()
                     .parse(&filter)
-                    .map_err(|_| ErrorResponseType::PluginFilterInvalid)?;
+                    .map_err(|error| {
+                        ErrorResponseType::PluginFilterInvalid(PluginFilterInvalid {
+                            reason: error.to_string(),
+                        })
+                    })?;
 
                 Ok(ApiPluginFilterQuery(Some(exp)))
             }

@@ -1,6 +1,13 @@
 use crate::ast::{Expr, SingleOp, MultipleOp};
+use regex::Error as RegexError;
+use regex::Regex;
+use lalrpop_util::ParseError;
 
 grammar;
+
+extern {
+    type Error = RegexError;
+}
 
 pub Expr: Box<Expr> = {
     Expr ExprOp Factor => Box::new(Expr::MultipleOp(<>)),
@@ -54,6 +61,16 @@ Type: SingleOp = {
 SingleOpCode: SingleOp = {
     "is" <Str>  => SingleOp::Is(<>),
     "in" "[" <Strs> "]" => SingleOp::In(<>),
+    "matches" <Reg> => SingleOp::Matches(<>),
+}
+
+Reg: Regex = {
+    <s:r"/[^/]+/"> =>? {
+        Regex::new(&s[1..s.len()-1])
+            .map_err(|error| ParseError::User  {
+                error
+            })
+    }
 }
 
 Str: String = {

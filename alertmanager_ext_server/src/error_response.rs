@@ -31,7 +31,7 @@ pub enum ErrorResponseType {
     /// Query is invalid
     QueryInvalid(QueryInvalid),
     /// Filter is invalid
-    PluginFilterInvalid,
+    PluginFilterInvalid(PluginFilterInvalid),
     /// Path is invalid
     PathInvalid(PathInvalid),
     /// Internal server error
@@ -49,6 +49,12 @@ pub struct QueryInvalid {
     pub(crate) status_code: StatusCode,
     pub(crate) reason: String,
     pub(crate) expected_query_schema: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginFilterInvalid {
+    pub(crate) reason: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
@@ -92,7 +98,7 @@ impl HasStatusCode for ErrorResponseType {
         match self {
             ErrorResponseType::PayloadInvalid(payload_invalid) => payload_invalid.status_code,
             ErrorResponseType::QueryInvalid(query_invalid) => query_invalid.status_code,
-            ErrorResponseType::PluginFilterInvalid => StatusCode::UNPROCESSABLE_ENTITY,
+            ErrorResponseType::PluginFilterInvalid(..) => StatusCode::UNPROCESSABLE_ENTITY,
             ErrorResponseType::PathInvalid(path_invalid) => path_invalid.status_code,
             ErrorResponseType::InternalServerError { .. } => StatusCode::INTERNAL_SERVER_ERROR,
             ErrorResponseType::NotFound => StatusCode::NOT_FOUND,

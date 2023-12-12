@@ -23,7 +23,7 @@ plugins:
         name: filter_plugin_1
         group: default
       config:
-        webhook_url: http://localhost:5050/push
+        webhook_url: http://localhost:5050/push?filter=not name is filter_plugin_1
         group_labels:
           - action: Drop
             regex: ^.*$

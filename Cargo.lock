@@ -2889,6 +2889,7 @@ dependencies = [
  "lalrpop",
  "lalrpop-util",
  "plugins_definitions",
+ "regex",
 ]
 
 [[package]]

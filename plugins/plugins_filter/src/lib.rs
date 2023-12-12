@@ -28,5 +28,10 @@ mod test {
             )
             .unwrap();
         println!("{:?}", expr);
+
+        let expr = filter::ExprParser::new()
+            .parse("name matches /^postgres.*$/")
+            .unwrap();
+        println!("{:?}", expr);
     }
 }

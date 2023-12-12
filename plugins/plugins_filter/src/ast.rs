@@ -1,4 +1,5 @@
 use plugins_definitions::PluginMeta;
+use regex::Regex;
 
 #[derive(Debug)]
 pub enum Expr {
@@ -13,6 +14,7 @@ pub enum Expr {
 pub enum SingleOp {
     Is(String),
     In(Vec<String>),
+    Matches(Regex),
 }
 
 #[derive(Debug)]
@@ -40,6 +42,7 @@ impl SingleOp {
         match self {
             SingleOp::Is(v) => v == value,
             SingleOp::In(vs) => vs.contains(&value.to_string()),
+            SingleOp::Matches(re) => re.is_match(value),
         }
     }
 }
