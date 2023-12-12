@@ -31,21 +31,12 @@ impl From<InternalHealthError> for HealthError {
 
 #[derive(ThisError, Debug)]
 pub enum InternalPushError {
-    #[error("Error starting session: {error}")]
-    StartSession {
-        #[source]
-        error: MongoError,
-    },
-    #[error("Error beginning transaction: {error}")]
-    TransactionBegin {
-        #[source]
-        error: MongoError,
-    },
-    #[error("Error committing transaction: {error}")]
-    CommitTransaction {
-        #[source]
-        error: MongoError,
-    },
+    #[error("Error starting session: {0}")]
+    StartSession(#[source] MongoError),
+    #[error("Error beginning transaction: {0}")]
+    TransactionBegin(#[source] MongoError),
+    #[error("Error committing transaction: {0}")]
+    CommitTransaction(#[source] MongoError),
     #[error("Error inserting alert group: group_key: {group_key}, error: {error}")]
     GroupInsertion {
         group_key: String,

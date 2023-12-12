@@ -23,12 +23,12 @@ impl MongoPlugin {
             .client
             .start_session(None)
             .await
-            .map_err(|error| InternalPushError::StartSession { error })?;
+            .map_err(InternalPushError::StartSession)?;
 
         session
             .start_transaction(None)
             .await
-            .map_err(|error| InternalPushError::TransactionBegin { error })?;
+            .map_err(InternalPushError::TransactionBegin)?;
 
         let alert_group = InsertableAlertGroup {
             group_key: alertmanager_push.group_key.clone(),
@@ -181,7 +181,7 @@ impl MongoPlugin {
         session
             .commit_transaction()
             .await
-            .map_err(|error| InternalPushError::CommitTransaction { error })?;
+            .map_err(InternalPushError::CommitTransaction)?;
 
         Ok(())
     }
