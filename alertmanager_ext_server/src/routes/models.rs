@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 #[derive(Debug, Clone, Serialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 /// Meta information about a plugin
 pub struct PluginResponseMeta {
     /// Name of the plugin
@@ -26,7 +25,6 @@ impl<'a> From<PluginMeta<'a>> for PluginResponseMeta {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, IntoParams, ToSchema)]
-#[serde(rename_all = "camelCase")]
 /// Query filter for plugins
 ///
 /// This is used to filter plugins by name, group or type.

@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 /// Default error response
 pub struct ErrorResponse {
@@ -23,7 +22,6 @@ impl ErrorResponse {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(tag = "type", content = "error")]
-#[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub enum ErrorResponseType {
     /// Payload is invalid
@@ -43,7 +41,6 @@ pub enum ErrorResponseType {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 pub struct QueryInvalid {
     #[serde(skip)]
     pub(crate) status_code: StatusCode,
@@ -52,13 +49,11 @@ pub struct QueryInvalid {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 pub struct PluginFilterInvalid {
     pub(crate) reason: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 pub struct PayloadInvalid {
     #[serde(skip)]
     pub(crate) status_code: StatusCode,
@@ -67,7 +62,6 @@ pub struct PayloadInvalid {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 pub struct PathInvalid {
     #[serde(skip)]
     pub(crate) status_code: StatusCode,
@@ -75,7 +69,6 @@ pub struct PathInvalid {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct InternalServerError {
     reason: String,

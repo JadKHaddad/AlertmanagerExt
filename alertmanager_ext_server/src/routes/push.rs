@@ -15,7 +15,6 @@ use tokio::task::JoinHandle;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Serialize, JsonSchema, PartialEq, ToSchema)]
-#[serde(rename_all = "camelCase")]
 /// Push status
 pub enum PushStatus {
     /// Push was successful
@@ -40,7 +39,6 @@ impl HasStatusCode for PushStatus {
 }
 
 #[derive(Debug, Clone, Serialize, JsonSchema, PartialEq, ToSchema)]
-#[serde(rename_all = "camelCase")]
 #[serde(tag = "type", content = "content")]
 /// Push status for a plugin
 pub enum PluginPushStatus {
@@ -54,7 +52,6 @@ pub enum PluginPushStatus {
 }
 
 #[derive(Debug, Clone, Serialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 /// Response for a plugin push
 pub struct PluginPushResponse {
     /// Status of the push for the plugin
@@ -64,7 +61,6 @@ pub struct PluginPushResponse {
 }
 
 #[derive(Debug, Clone, Serialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 /// Response for a push
 pub struct PushResponse {
     /// Status of the push

@@ -12,7 +12,6 @@ use utoipa::ToSchema;
 use super::models::PluginFilterQuery;
 
 #[derive(Clone, Debug, Serialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 pub struct ServerHealthResponse {}
 
 impl HasStatusCode for ServerHealthResponse {
@@ -41,7 +40,6 @@ pub async fn health() -> ServerHealthResponse {
 }
 
 #[derive(Clone, Debug, Serialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 /// Health status for all plugins
 pub enum HealthStatus {
     /// All plugins are healthy
@@ -55,7 +53,6 @@ pub enum HealthStatus {
 }
 
 #[derive(Debug, Clone, Serialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 #[serde(tag = "type", content = "content")]
 /// Plugin health status
 pub enum PluginHealthStatus {
@@ -69,7 +66,6 @@ pub enum PluginHealthStatus {
 }
 
 #[derive(Clone, Debug, Serialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 pub struct PlugingHealthResponse {
     /// Health status for the plugin
     pub status: PluginHealthStatus,
@@ -87,7 +83,6 @@ impl HasStatusCode for PlugingHealthResponse {
 }
 
 #[derive(Clone, Debug, Serialize, JsonSchema, ToSchema)]
-#[serde(rename_all = "camelCase")]
 pub struct PluginsHealthResponse {
     /// Health status for all plugins
     pub status: HealthStatus,
