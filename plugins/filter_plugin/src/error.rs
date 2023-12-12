@@ -14,7 +14,7 @@ pub enum NewFilterPluginError {
 
 #[derive(ThisError, Debug)]
 pub enum InternalPushError {
-    #[error("Loop detected.")]
+    #[error("Loop detected")]
     LoopDetected,
     #[error("Reqwest error: {0}")]
     Reqwest(
@@ -22,6 +22,11 @@ pub enum InternalPushError {
         #[from]
         reqwest::Error,
     ),
+    #[error("Got error response: status code: {status_code}, body: {body}")]
+    ErrorResponse {
+        status_code: reqwest::StatusCode,
+        body: String,
+    },
 }
 
 impl From<InternalPushError> for PushError {

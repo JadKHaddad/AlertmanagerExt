@@ -27,12 +27,19 @@ impl Push for FilterPlugin {
 
         self.add_signature(&mut alertmanager_push);
 
-        reqwest::Client::new()
+        let response = reqwest::Client::new()
             .post(self.config.webhook_url.clone())
             .json(&alertmanager_push)
             .send()
             .await
             .map_err(InternalPushError::Reqwest)?;
+
+        let status_code = response.status();
+        if !status_code.is_success() {
+            let body = response.text().await.map_err(InternalPushError::Reqwest)?;
+
+            return Err(InternalPushError::ErrorResponse { status_code, body }.into());
+        };
 
         tracing::trace!("Successfully pushed.");
         Ok(())
