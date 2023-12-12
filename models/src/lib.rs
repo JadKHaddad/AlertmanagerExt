@@ -58,7 +58,9 @@ pub struct Alert {
     pub fingerprint: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq, Hash, Default)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema, PartialEq, Eq, Hash, Default,
+)]
 #[serde(rename_all = "camelCase")]
 /// An alert that can be sent to/retrieved from a plugin
 pub struct StandAloneAlert {

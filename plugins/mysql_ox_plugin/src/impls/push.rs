@@ -1,6 +1,6 @@
 use crate::{
     database::models::{
-        annotations::{InsertCommonAnnotation},
+        annotations::InsertCommonAnnotation,
         groups::{
             InsertGroup, InsertGroupCommonAnnotation, InsertGroupCommonLabel, InsertGroupLabel,
         },
@@ -26,7 +26,7 @@ impl Push for MysqlOXPlugin {
             .run(&self.pool)
             .await
             .map_err(|error| InitializeError {
-                reason: error.to_string(),
+                error: error.into(),
             })?;
 
         tracing::trace!("Successfully initialized.");
