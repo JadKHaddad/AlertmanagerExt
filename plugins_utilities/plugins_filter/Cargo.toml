@@ -9,6 +9,6 @@ edition = "2021"
 lalrpop = "0.20.0"
 
 [dependencies]
-plugins_definitions = { path = "../plugins_definitions" }
+plugins_definitions = { path = "../../plugins/plugins_definitions" }
 lalrpop-util = { version = "0.20.0", features = ["lexer", "unicode"] }
 regex = "1.10.2"
