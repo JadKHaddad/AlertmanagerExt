@@ -1,1 +1,1 @@
-# AlertmanagerExt Push Server
+# AlertmanagerExt Server
