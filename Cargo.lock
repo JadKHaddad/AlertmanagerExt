@@ -61,6 +61,7 @@ dependencies = [
  "clap",
  "file_plugin",
  "filter_plugin",
+ "formatter",
  "hyper",
  "models",
  "mongo_plugin",
@@ -1368,16 +1369,13 @@ checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
 name = "file_plugin"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-trait",
- "jinja_renderer",
+ "formatter",
  "models",
  "plugins_definitions",
  "push_definitions",
  "schemars",
  "serde",
- "serde_json",
- "serde_yaml",
  "thiserror",
  "tokio",
  "tracing",
@@ -1463,6 +1461,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13624c2627564efccf4934284bdd98cbaa14e79b0b5a141218e507b3a823456"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "formatter"
+version = "0.1.0"
+dependencies = [
+ "jinja_renderer",
+ "models",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror",
 ]
 
 [[package]]
@@ -3070,14 +3081,12 @@ name = "print_plugin"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "jinja_renderer",
+ "formatter",
  "models",
  "plugins_definitions",
  "push_definitions",
  "schemars",
  "serde",
- "serde_json",
- "serde_yaml",
  "thiserror",
  "tokio",
  "tracing",

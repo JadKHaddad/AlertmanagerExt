@@ -1,36 +1,37 @@
+use formatter::{FormatError, NewFormatterError};
+use push_definitions::PushError;
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
 pub enum NewPrintPluginError {
-    #[error("Failed to create jinja renderer: {0}")]
-    JinjaRenderer(
+    #[error("Failed to create formatter: {0}")]
+    Formatter(
         #[source]
         #[from]
-        jinja_renderer::NewJinjaRendererError,
+        NewFormatterError,
     ),
 }
 
 #[derive(ThisError, Debug)]
-#[error("Failed to convert to string: {reason}")]
-pub enum ToStringError {
-    #[error("Failed to convert to json: {0}")]
-    Json(
+pub enum InternalPushError {
+    #[error("Failed to format: {0}")]
+    Format(
         #[source]
         #[from]
-        serde_json::Error,
+        FormatError,
     ),
-    #[error("Failed to convert to yaml: {0}")]
-    Yaml(
+    #[error("Failed to write to stdout: {0}")]
+    Write(
         #[source]
         #[from]
-        serde_yaml::Error,
+        tokio::io::Error,
     ),
-    #[error("Failed to render template: {0}")]
-    Jinja(
-        #[source]
-        #[from]
-        jinja_renderer::RenderError,
-    ),
-    #[error("Other error: {reason}")]
-    Other { reason: String },
+}
+
+impl From<InternalPushError> for PushError {
+    fn from(error: InternalPushError) -> Self {
+        Self {
+            error: error.into(),
+        }
+    }
 }

@@ -3,6 +3,7 @@ members = [
     "models",
     "models_utilities/random_models_generator",
     "models_utilities/jinja_renderer",
+    "models_utilities/formatter",
     "push/push_definitions",
     "pull/pull_definitions",
     "alertmanager_ext_server",

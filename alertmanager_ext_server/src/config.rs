@@ -165,6 +165,8 @@ pub struct SqlitePluginFromFileConfig {
 
 #[cfg(test)]
 mod test {
+    use formatter::{FormatType, FormatterConfig};
+
     use super::*;
 
     #[ignore]
@@ -226,7 +228,10 @@ mod test {
                         },
                         config: FilePluginConfig {
                             dir_path: "/tmp".into(),
-                            file_type: file_plugin::FileType::Json,
+                            extension: "json".into(),
+                            formatter_config: FormatterConfig {
+                                format_type: FormatType::Json,
+                            },
                         },
                     },
                     FilePluginFromFileConfig {
@@ -236,7 +241,10 @@ mod test {
                         },
                         config: FilePluginConfig {
                             dir_path: "/tmp".into(),
-                            file_type: file_plugin::FileType::Json,
+                            extension: "yaml".into(),
+                            formatter_config: FormatterConfig {
+                                format_type: FormatType::Yaml,
+                            },
                         },
                     },
                 ]),
@@ -246,7 +254,9 @@ mod test {
                         group: "print".to_string(),
                     },
                     config: PrintPluginConfig {
-                        print_type: print_plugin::PrintType::Json,
+                        formatter_config: FormatterConfig {
+                            format_type: FormatType::Json,
+                        },
                     },
                 }]),
                 mongo_plugin: None,

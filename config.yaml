@@ -8,16 +8,21 @@ plugins:
         group: default
       config:
         dir_path: dev/data/json_pushes
-        file_type:
-          type: Json
+        extension: json
+        formatter_config:
+          format_type:
+            type: Json
     - meta:
         name: jinja_file_plugin
         group: default
       config:
         dir_path: dev/data/jinja_pushes
-        file_type:
-          type: Jinja
-          template: models_utilities/jinja_renderer/example-template.j2
+        extension: txt
+        formatter_config:
+          format_type:
+            type: Jinja
+            template: models_utilities/jinja_renderer/example-template.j2
+
   filter_plugin:
     - meta:
         name: filter_plugin_1
@@ -57,6 +62,7 @@ plugins:
         connection_timeout:
           secs: 10
           nanos: 0
+
   postgres_sea_plugin:
     - meta:
         name: postgres_sea_plugin_1
@@ -67,6 +73,7 @@ plugins:
         connection_timeout:
           secs: 10
           nanos: 0
+
   postgres_x_plugin:
     - meta:
         name: postgres_x_plugin_1
@@ -77,20 +84,24 @@ plugins:
         connection_timeout:
           secs: 10
           nanos: 0
+
   print_plugin:
     - meta:
         name: debug_print_plugin
         group: default
       config:
-        print_type:
-          type: Debug
+        formatter_config:
+          format_type:
+            type: Debug
     - meta:
         name: jinja_print_plugin
         group: default
       config:
-        print_type:
-          type: Jinja
-          template: models_utilities/jinja_renderer/example-template.j2
+        formatter_config:
+          format_type:
+            type: Jinja
+            template: models_utilities/jinja_renderer/example-template.j2
+
   sqlite_plugin:
     - meta:
         name: sqlite_plugin_1

@@ -6,8 +6,20 @@ use async_trait::async_trait;
 use models::AlertmanagerPush;
 use plugins_definitions::Plugin;
 use push_definitions::{InitializeError, Push, PushError};
+use std::path::PathBuf;
 
 impl FilePlugin {
+    fn decide_file_path(&self, alertmanager_push: &AlertmanagerPush) -> PathBuf {
+        let dir_path = &self.config.dir_path;
+        let mut file_path = dir_path.clone();
+        file_path.push(format!(
+            "{}.{}",
+            alertmanager_push.group_key, self.config.extension
+        ));
+
+        file_path
+    }
+
     fn initialize_with_internal_error(&mut self) -> Result<(), InternalInitializeError> {
         self.dir_exists()?;
 
@@ -20,7 +32,7 @@ impl FilePlugin {
     ) -> Result<(), InternalPushError> {
         let file_path = self.decide_file_path(alertmanager_push);
 
-        let contents = self.format(alertmanager_push)?;
+        let contents = self.formatter.format(alertmanager_push)?;
 
         tokio::fs::write(file_path, contents).await?;
 

@@ -8,6 +8,7 @@ edition = "2021"
 [dev-dependencies]
 axum-test = "13.4.1"
 random_models_generator = { path = "../models_utilities/random_models_generator" }
+formatter = { path = "../models_utilities/formatter" }
 url = { workspace = true }
 
 [dependencies]

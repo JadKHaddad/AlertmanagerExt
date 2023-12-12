@@ -1,33 +1,16 @@
 use error::NewPrintPluginError;
-use jinja_renderer::JinjaRenderer;
+use formatter::{Formatter, FormatterConfig};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
 mod error;
 mod impls;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "type")]
-/// The `PrintType` enum is used to specify the type of printing that should be done
-pub enum PrintType {
-    /// Prints as a debug string
-    Debug,
-    /// Prints as a pretty string
-    Pretty,
-    /// Prints as a json object
-    Json,
-    /// Prints as a yaml object
-    Yaml,
-    /// Prints as a jinja template
-    Jinja { template: PathBuf },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 /// Configuration for the Print plugin
 pub struct PrintPluginConfig {
-    /// The type of printing to do
-    pub print_type: PrintType,
+    /// Formatting configuration
+    pub formatter_config: FormatterConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -43,10 +26,8 @@ pub struct PrintPluginMeta {
 pub struct PrintPlugin {
     /// Meta information for the plugin
     meta: PrintPluginMeta,
-    /// Configuration for the plugin
-    config: PrintPluginConfig,
-    /// Renderer for Jinja templates
-    jinja_renderer: Option<JinjaRenderer>,
+    /// Formatter
+    formatter: Formatter,
 }
 
 impl PrintPlugin {
@@ -54,18 +35,8 @@ impl PrintPlugin {
         meta: PrintPluginMeta,
         config: PrintPluginConfig,
     ) -> Result<Self, NewPrintPluginError> {
-        let jinja_renderer = match &config.print_type {
-            PrintType::Jinja { template } => {
-                let jinja_renderer = JinjaRenderer::new_from_file(template).await?;
-                Some(jinja_renderer)
-            }
-            _ => None,
-        };
+        let formatter = Formatter::new(config.formatter_config.clone()).await?;
 
-        Ok(Self {
-            meta,
-            config,
-            jinja_renderer,
-        })
+        Ok(Self { meta, formatter })
     }
 }

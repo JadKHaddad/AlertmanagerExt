@@ -8,13 +8,11 @@ edition = "2021"
 [dependencies]
 push_definitions = { path = "../../push/push_definitions" }
 plugins_definitions = { path = "../plugins_definitions" }
-jinja_renderer = { path = "../../models_utilities/jinja_renderer" }
+formatter = { path = "../../models_utilities/formatter" }
 models = { path = "../../models" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
-serde_json = { workspace = true }
-serde_yaml = { workspace = true }
 serde = { workspace = true }
 schemars = { workspace = true }

@@ -1,3 +1,4 @@
+use formatter::{FormatError, NewFormatterError};
 use plugins_definitions::HealthError;
 use push_definitions::{InitializeError, PushError};
 use std::path::PathBuf;
@@ -5,11 +6,11 @@ use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
 pub enum NewFilePluginError {
-    #[error("Failed to create jinja renderer: {0}")]
-    JinjaRenderer(
+    #[error("Failed to create formatter: {0}")]
+    Formatter(
         #[source]
         #[from]
-        jinja_renderer::NewJinjaRendererError,
+        NewFormatterError,
     ),
 }
 
@@ -58,42 +59,18 @@ impl From<InternalInitializeError> for InitializeError {
 }
 
 #[derive(ThisError, Debug)]
-pub enum FormatError {
-    #[error("Failed to convert to json: {0}")]
-    Json(
-        #[source]
-        #[from]
-        serde_json::Error,
-    ),
-    #[error("Failed to convert to yaml: {0}")]
-    Yaml(
-        #[source]
-        #[from]
-        serde_yaml::Error,
-    ),
-    #[error("Failed to render template: {0}")]
-    JinjaRender(
-        #[source]
-        #[from]
-        jinja_renderer::RenderError,
-    ),
-    #[error("Jinja renderer not initialized")]
-    JinjaUninitialized,
-}
-
-#[derive(ThisError, Debug)]
 pub enum InternalPushError {
-    #[error("Failed to write to file: {0}")]
-    Write(
-        #[source]
-        #[from]
-        tokio::io::Error,
-    ),
     #[error("Failed to format: {0}")]
     Format(
         #[source]
         #[from]
         FormatError,
+    ),
+    #[error("Failed to write to file: {0}")]
+    Write(
+        #[source]
+        #[from]
+        tokio::io::Error,
     ),
 }
 
