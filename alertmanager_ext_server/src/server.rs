@@ -57,7 +57,6 @@ async fn create_plugins(config: Config) -> AnyResult<Vec<Arc<dyn PushAndPlugin>>
             for conf_filter_plugin in filter_plugins {
                 let mut filter_plugin =
                     FilterPlugin::new(conf_filter_plugin.meta, conf_filter_plugin.config)
-                        .await
                         .context("Failed to create Filter plugin")?;
 
                 filter_plugin

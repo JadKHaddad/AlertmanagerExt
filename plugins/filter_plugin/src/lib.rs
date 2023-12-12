@@ -119,7 +119,7 @@ pub struct FilterPlugin {
 }
 
 impl FilterPlugin {
-    pub async fn new(
+    pub fn new(
         meta: FilterPluginMeta,
         config: FilterPluginConfig,
     ) -> Result<Self, NewFilterPluginError> {
