@@ -1,6 +1,14 @@
-use crate::FilePlugin;
+use crate::{error::InternalHealthError, FilePlugin};
 use async_trait::async_trait;
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
+
+impl FilePlugin {
+    fn health_with_internal_error(&self) -> Result<(), InternalHealthError> {
+        self.dir_exists()?;
+
+        Ok(())
+    }
+}
 
 #[async_trait]
 impl Plugin for FilePlugin {
@@ -16,9 +24,7 @@ impl Plugin for FilePlugin {
     async fn health(&self) -> Result<(), HealthError> {
         tracing::trace!("Checking health.");
 
-        self.dir_exists().map_err(|error| HealthError {
-            error: error.into(),
-        })?;
+        self.health_with_internal_error()?;
 
         tracing::trace!("Successfully checked health.");
         Ok(())

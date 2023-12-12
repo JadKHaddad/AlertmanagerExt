@@ -1,4 +1,4 @@
-use error::{DirError, NewFilePluginError, ToStringError};
+use error::{DirError, FormatError, NewFilePluginError};
 use jinja_renderer::JinjaRenderer;
 use models::AlertmanagerPush;
 use schemars::JsonSchema;
@@ -95,16 +95,17 @@ impl FilePlugin {
         Ok(())
     }
 
-    fn to_string(&self, alertmanager_push: &AlertmanagerPush) -> Result<String, ToStringError> {
+    fn format(&self, alertmanager_push: &AlertmanagerPush) -> Result<String, FormatError> {
         let file_type = &self.config.file_type;
 
         match file_type {
             FileType::Json => Ok(serde_json::to_string(alertmanager_push)?),
             FileType::Yaml => Ok(serde_yaml::to_string(alertmanager_push)?),
             FileType::Jinja { .. } => {
-                let jinja_renderer = self.jinja_renderer.as_ref().ok_or(ToStringError::Other {
-                    reason: "Jinja renderer not initialized".to_string(),
-                })?;
+                let jinja_renderer = self
+                    .jinja_renderer
+                    .as_ref()
+                    .ok_or(FormatError::JinjaUninitialized)?;
                 Ok(jinja_renderer.render(alertmanager_push)?)
             }
         }
