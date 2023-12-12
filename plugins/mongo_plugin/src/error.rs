@@ -31,67 +31,69 @@ impl From<InternalHealthError> for HealthError {
 
 #[derive(ThisError, Debug)]
 pub enum InternalPushError {
-    #[error("Error while starting session, error: {error}")]
+    #[error("Error starting session: {error}")]
     StartSession {
         #[source]
         error: MongoError,
     },
-    #[error("Error while starting transaction, error: {error}")]
-    StartTransaction {
+    #[error("Error beginning transaction: {error}")]
+    TransactionBegin {
         #[source]
         error: MongoError,
     },
-    #[error("Error while committing transaction, error: {error}")]
+    #[error("Error committing transaction: {error}")]
     CommitTransaction {
         #[source]
         error: MongoError,
     },
-    #[error("Error while inserting alert group: group_key: {group_key}, error: {error}")]
+    #[error("Error inserting alert group: group_key: {group_key}, error: {error}")]
     GroupInsertion {
         group_key: String,
         #[source]
         error: MongoError,
     },
-    #[error("Error while obtaining alert group id: group_key: {group_key}")]
+    #[error("Error obtaining alert group id: group_key: {group_key}")]
     GroupId { group_key: String },
-    #[error("Error while inserting group labels: group_key: {group_key}, error: {error}")]
+    #[error("Error inserting group labels: group_key: {group_key}, error: {error}")]
     GroupLabelsInsertion {
         group_key: String,
         #[source]
         error: MongoError,
     },
-    #[error("Error while inserting common labels: group_key: {group_key}, error: {error}")]
+    #[error("Error inserting common labels: group_key: {group_key}, error: {error}")]
     CommonLabelsInsertion {
         group_key: String,
         #[source]
         error: MongoError,
     },
-    #[error("Error while inserting common annotations: group_key: {group_key}, error: {error}")]
+    #[error("Error inserting common annotations: group_key: {group_key}, error: {error}")]
     CommonAnnotationsInsertion {
         group_key: String,
         #[source]
         error: MongoError,
     },
-    #[error("Error while inserting alert: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}")]
+    #[error(
+        "Error inserting alert: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}"
+    )]
     AlertInsertion {
         group_key: String,
         fingerprint: String,
         #[source]
         error: MongoError,
     },
-    #[error("Error while obtaining alertid: group_key: {group_key}, fingerprint: {fingerprint}")]
+    #[error("Error obtaining alertid: group_key: {group_key}, fingerprint: {fingerprint}")]
     AlertId {
         group_key: String,
         fingerprint: String,
     },
-    #[error("Error while inserting alert labels: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}")]
+    #[error("Error inserting alert labels: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}")]
     AlertLabelsInsertion {
         group_key: String,
         fingerprint: String,
         #[source]
         error: MongoError,
     },
-    #[error("Error while inserting alert annotations: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}")]
+    #[error("Error inserting alert annotations: group_key: {group_key}, fingerprint: {fingerprint}, error: {error}")]
     AlertAnnotationsInsertion {
         group_key: String,
         fingerprint: String,

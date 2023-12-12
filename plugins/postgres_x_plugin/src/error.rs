@@ -4,11 +4,11 @@ use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
 pub enum InternalPushError {
-    #[error("Error getting connection from pool: {0}")]
+    #[error("Error getting connection from: {0}")]
     Acquire(#[source] SqlxError),
-    #[error("Error beginning transaction error: {0}")]
+    #[error("Error beginning transaction: {0}")]
     TransactionBegin(#[source] SqlxError),
-    #[error("Error committing transaction error: {0}")]
+    #[error("Error committing transaction: {0}")]
     TransactionCommit(#[source] SqlxError),
     #[error("Error inserting alert group. group_key: {group_key}, error: {error}")]
     GroupInsertion {
