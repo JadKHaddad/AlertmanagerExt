@@ -1,6 +1,33 @@
 use mongodb::error::Error as MongoError;
+use plugins_definitions::HealthError;
 use push_definitions::PushError;
 use thiserror::Error as ThisError;
+
+#[derive(ThisError, Debug)]
+pub enum NewMongoPluginError {
+    #[error("Failed to parse connection string: {0}")]
+    Parse(#[source] MongoError),
+    #[error("Failed to create client: {0}")]
+    Client(#[source] MongoError),
+}
+
+#[derive(ThisError, Debug)]
+pub enum InternalHealthError {
+    #[error("Failed to ping mongo: {0}")]
+    Ping(
+        #[source]
+        #[from]
+        MongoError,
+    ),
+}
+
+impl From<InternalHealthError> for HealthError {
+    fn from(error: InternalHealthError) -> Self {
+        Self {
+            error: error.into(),
+        }
+    }
+}
 
 #[derive(ThisError, Debug)]
 pub enum InternalPushError {

@@ -1,4 +1,3 @@
-use anyhow::{Context, Result as AnyResult};
 use database::models::{
     alert::{InsertableAlert, InsertableAlertAnnotation, InsertableAlertLabel},
     group::{
@@ -6,6 +5,7 @@ use database::models::{
         InsertableGroupLabel,
     },
 };
+use error::NewMongoPluginError;
 use mongodb::{options::ClientOptions, Client, Collection, Database};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -40,12 +40,15 @@ pub struct MongoPlugin {
 }
 
 impl MongoPlugin {
-    pub async fn new(meta: MongoPluginMeta, config: MongoPluginConfig) -> AnyResult<Self> {
+    pub async fn new(
+        meta: MongoPluginMeta,
+        config: MongoPluginConfig,
+    ) -> Result<Self, NewMongoPluginError> {
         let client_options = ClientOptions::parse(&config.connection_string)
             .await
-            .context("Failed to parse connection string")?;
+            .map_err(NewMongoPluginError::Parse)?;
 
-        let client = Client::with_options(client_options).context("Failed to create client")?;
+        let client = Client::with_options(client_options).map_err(NewMongoPluginError::Client)?;
 
         Ok(Self {
             meta,

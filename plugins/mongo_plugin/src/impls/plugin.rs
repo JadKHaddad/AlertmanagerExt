@@ -1,7 +1,17 @@
-use crate::MongoPlugin;
+use crate::{error::InternalHealthError, MongoPlugin};
 use async_trait::async_trait;
 use mongodb::bson::doc;
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
+
+impl MongoPlugin {
+    async fn health_with_internal_error(&self) -> Result<(), InternalHealthError> {
+        self.database()
+            .run_command(doc! { "ping": 1 }, None)
+            .await?;
+
+        Ok(())
+    }
+}
 
 #[async_trait]
 impl Plugin for MongoPlugin {
@@ -17,15 +27,9 @@ impl Plugin for MongoPlugin {
     async fn health(&self) -> Result<(), HealthError> {
         tracing::trace!("Checking health.");
 
-        self.database()
-            .run_command(doc! { "ping": 1 }, None)
-            .await
-            .map_err(|error| HealthError {
-                error: error.into(),
-            })?;
+        self.health_with_internal_error().await?;
 
         tracing::trace!("Successfully checked health.");
-
         Ok(())
     }
 }
