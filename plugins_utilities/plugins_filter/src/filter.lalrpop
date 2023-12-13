@@ -60,17 +60,17 @@ Type: SingleOp = {
 
 SingleOpCode: SingleOp = {
     "is" <Str>  => SingleOp::Is(<>),
+    "==" <Str> => SingleOp::Is(<>),
+    "is not" <Str> => SingleOp::IsNot(<>),
+    "!=" <Str> => SingleOp::IsNot(<>),
     "in" "[" <Strs> "]" => SingleOp::In(<>),
+    "not in" "[" <Strs> "]" => SingleOp::NotIn(<>),
     "matches" <Reg> => SingleOp::Matches(<>),
 }
 
 Reg: Regex = {
-    <s:r"/[^/]+/"> =>? {
-        Regex::new(&s[1..s.len()-1])
-            .map_err(|error| ParseError::User  {
-                error
-            })
-    }
+    <s:r"/[^/]+/"> =>?  Regex::new(&s[1..s.len()-1])
+                            .map_err(|error| ParseError::User  { error })
 }
 
 Str: String = {
