@@ -12,10 +12,9 @@ use crate::{
             labels::{InsertableCommonLabel, InsertableLabel},
         },
     },
-    error::{InternalPushError, LablelInsertionError},
+    error::{InternalInitializeError, InternalPushError, LablelInsertionError},
     PostgresPlugin, MIGRATIONS,
 };
-use anyhow::{Context, Result as AnyResult};
 use async_trait::async_trait;
 use diesel::{
     BoolExpressionMethods, Connection, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
@@ -531,49 +530,11 @@ impl PostgresPlugin {
 
         Ok(())
     }
-}
 
-#[async_trait]
-impl Push for PostgresPlugin {
-    #[tracing::instrument(name = "push_initialize", skip(self), fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
-    async fn initialize(&mut self) -> Result<(), InitializeError> {
-        tracing::trace!("Initializing.");
-
-        // Always be nice and give memory back to the OS. ;)
-        let config = self.config.take().ok_or_else(|| InitializeError {
-            // TODO
-            error: std::io::Error::new(std::io::ErrorKind::Other, "Already initialized.").into(),
-        })?;
-
-        let connection_string = config.connection_string;
-        let handle: JoinHandle<AnyResult<()>> = tokio::task::spawn_blocking(move || {
-            let mut conn = PgConnection::establish(&connection_string)
-                .context("Failed to establish connection")?;
-
-            conn.run_pending_migrations(MIGRATIONS)
-                .map_err(|error| anyhow::anyhow!(error))
-                .context("Failed to run migrations")?;
-
-            Ok(())
-        });
-
-        handle
-            .await
-            .map_err(|error| InitializeError {
-                error: error.into(),
-            })?
-            .map_err(|error| InitializeError {
-                error: error.into(),
-            })?;
-
-        tracing::trace!("Successfully initialized.");
-        Ok(())
-    }
-
-    #[tracing::instrument(name = "push_alert", skip_all, fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
-    async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError> {
-        tracing::trace!("Pushing.");
-
+    async fn push_alert_with_internal_error(
+        &self,
+        alertmanager_push: &AlertmanagerPush,
+    ) -> Result<(), InternalPushError> {
         let mut conn = self.pool.get().await.map_err(InternalPushError::Acquire)?;
 
         conn.transaction::<(), InternalPushError, _>(|conn| {
@@ -593,6 +554,52 @@ impl Push for PostgresPlugin {
             .scope_boxed()
         })
         .await?;
+
+        Ok(())
+    }
+
+    async fn initialize_with_internal_error(&mut self) -> Result<(), InternalInitializeError> {
+        // Always be nice and give memory back to the OS. ;)
+        let config = self
+            .config
+            .take()
+            .ok_or_else(|| InternalInitializeError::AlreadyInitialized)?;
+
+        let connection_string = config.connection_string;
+        let handle: JoinHandle<Result<(), InternalInitializeError>> =
+            tokio::task::spawn_blocking(move || {
+                let mut conn = PgConnection::establish(&connection_string)?;
+
+                conn.run_pending_migrations(MIGRATIONS)
+                    .map_err(InternalInitializeError::Migrations)?;
+
+                Ok(())
+            });
+
+        handle.await??;
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Push for PostgresPlugin {
+    #[tracing::instrument(name = "push_initialize", skip(self), fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
+    async fn initialize(&mut self) -> Result<(), InitializeError> {
+        tracing::trace!("Initializing.");
+
+        self.initialize_with_internal_error().await?;
+
+        tracing::trace!("Successfully initialized.");
+        Ok(())
+    }
+
+    #[tracing::instrument(name = "push_alert", skip_all, fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
+    async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError> {
+        tracing::trace!("Pushing.");
+
+        self.push_alert_with_internal_error(alertmanager_push)
+            .await?;
 
         tracing::trace!("Successfully pushed.");
         Ok(())

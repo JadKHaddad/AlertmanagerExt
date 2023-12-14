@@ -1,6 +1,6 @@
-use anyhow::{Context, Result as AnyResult};
 use diesel_async::{pooled_connection::AsyncDieselConnectionManager, AsyncPgConnection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
+use error::NewPostgresPluginError;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -45,14 +45,16 @@ pub struct PostgresPlugin {
 }
 
 impl PostgresPlugin {
-    pub async fn new(meta: PostgresPluginMeta, config: PostgresPluginConfig) -> AnyResult<Self> {
+    pub async fn new(
+        meta: PostgresPluginMeta,
+        config: PostgresPluginConfig,
+    ) -> Result<Self, NewPostgresPluginError> {
         let manager = AsyncDieselConnectionManager::new(config.connection_string.clone());
         let pool = bb8::Pool::builder()
             .max_size(config.max_connections)
             .connection_timeout(config.connection_timeout)
             .build(manager)
-            .await
-            .context("Failed to create pool")?;
+            .await?;
 
         Ok(Self {
             meta,

@@ -15,7 +15,6 @@ plugins_definitions = { path = "../plugins_definitions" }
 models = { path = "../../models" }
 tokio = { workspace = true }
 async-trait = { workspace = true }
-anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-test = { workspace = true }
 thiserror = { workspace = true }

@@ -1,9 +1,20 @@
 use bb8::RunError;
-use diesel::result::Error as DieselError;
+use diesel::{result::Error as DieselError, ConnectionError};
 use diesel_async::pooled_connection::PoolError;
+use plugins_definitions::HealthError;
 use pull_definitions::PullError;
-use push_definitions::PushError;
+use push_definitions::{InitializeError, PushError};
 use thiserror::Error as ThisError;
+
+#[derive(ThisError, Debug)]
+pub enum NewPostgresPluginError {
+    #[error("Failed to create pool: {0}")]
+    Pool(
+        #[source]
+        #[from]
+        PoolError,
+    ),
+}
 
 #[derive(ThisError, Debug)]
 pub enum InternalPushError {
@@ -192,6 +203,52 @@ pub enum InternalPullError {
 
 impl From<InternalPullError> for PullError {
     fn from(error: InternalPullError) -> Self {
+        Self {
+            error: error.into(),
+        }
+    }
+}
+
+#[derive(ThisError, Debug)]
+pub enum InternalInitializeError {
+    #[error("Already initialized")]
+    AlreadyInitialized,
+    #[error("Failed to establish connection: {0}")]
+    Connection(
+        #[from]
+        #[source]
+        ConnectionError,
+    ),
+    #[error("Failed to run migrations: {0}")]
+    Migrations(#[source] Box<dyn std::error::Error + Send + Sync>),
+    #[error("Failed to join task: {0}")]
+    Join(
+        #[from]
+        #[source]
+        tokio::task::JoinError,
+    ),
+}
+
+impl From<InternalInitializeError> for InitializeError {
+    fn from(error: InternalInitializeError) -> Self {
+        Self {
+            error: error.into(),
+        }
+    }
+}
+
+#[derive(ThisError, Debug)]
+pub enum InternalHealthError {
+    #[error("Failed to get connection: {0}")]
+    Connection(
+        #[from]
+        #[source]
+        bb8::RunError<PoolError>,
+    ),
+}
+
+impl From<InternalHealthError> for HealthError {
+    fn from(error: InternalHealthError) -> Self {
         Self {
             error: error.into(),
         }

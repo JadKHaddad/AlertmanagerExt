@@ -12,26 +12,28 @@ use crate::{
 };
 use async_trait::async_trait;
 use diesel::{BelongingToDsl, GroupedBy, QueryDsl, SelectableHelper};
-use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use diesel_async::RunQueryDsl;
 use models::StandAloneAlert;
 use plugins_definitions::Plugin;
 use pull_definitions::{Pull, PullAlertsFilter, PullError};
 
 impl PostgresPlugin {
-    async fn pull_alerts_with_internal_pull_error(
-        conn: &mut AsyncPgConnection,
+    async fn pull_alerts_with_internal_error(
+        &self,
         filter: &PullAlertsFilter,
     ) -> Result<Vec<StandAloneAlert>, InternalPullError> {
+        let mut conn = self.pool.get().await.map_err(InternalPullError::Acquire)?;
+
         let alerts: Vec<Alert> = database::schema::alerts::table
             .select(Alert::as_select())
-            .load(conn)
+            .load(&mut conn)
             .await
             .map_err(InternalPullError::Alerts)?;
 
         let labels: Vec<(AlertLabel, Label)> = AlertLabel::belonging_to(&alerts)
             .inner_join(database::schema::labels::table)
             .select((AlertLabel::as_select(), Label::as_select()))
-            .load(conn)
+            .load(&mut conn)
             .await
             .map_err(InternalPullError::Labels)?;
 
@@ -39,7 +41,7 @@ impl PostgresPlugin {
             AlertAnnotation::belonging_to(&alerts)
                 .inner_join(database::schema::annotations::table)
                 .select((AlertAnnotation::as_select(), Annotation::as_select()))
-                .load(conn)
+                .load(&mut conn)
                 .await
                 .map_err(InternalPullError::Annotations)?;
 
@@ -91,9 +93,7 @@ impl Pull for PostgresPlugin {
     ) -> Result<Vec<StandAloneAlert>, PullError> {
         tracing::trace!("Pulling.");
 
-        let mut conn = self.pool.get().await.map_err(InternalPullError::Acquire)?;
-
-        let alerts = Self::pull_alerts_with_internal_pull_error(&mut conn, filter).await?;
+        let alerts = self.pull_alerts_with_internal_error(filter).await?;
 
         tracing::trace!("Successfully pulled.");
         Ok(alerts)

@@ -2965,7 +2965,6 @@ dependencies = [
 name = "postgres_plugin"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "bb8",
  "chrono",
