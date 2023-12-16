@@ -1,9 +1,10 @@
-use anyhow::{Context, Result as AnyResult};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
+use error::NewSqlitePluginError;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 mod database;
+mod error;
 mod impls;
 
 pub(crate) const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
@@ -38,14 +39,15 @@ pub struct SqlitePlugin {
 }
 
 impl SqlitePlugin {
-    pub fn new(meta: SqlitePluginMeta, config: SqlitePluginConfig) -> AnyResult<Self> {
+    pub fn new(
+        meta: SqlitePluginMeta,
+        config: SqlitePluginConfig,
+    ) -> Result<Self, NewSqlitePluginError> {
         let manager = deadpool_diesel::sqlite::Manager::new(
             &config.connection_string,
             deadpool_diesel::Runtime::Tokio1,
         );
-        let pool = deadpool_diesel::sqlite::Pool::builder(manager)
-            .build()
-            .context("Failed to create pool")?;
+        let pool = deadpool_diesel::sqlite::Pool::builder(manager).build()?;
 
         Ok(Self {
             meta,
