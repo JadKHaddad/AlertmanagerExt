@@ -1,10 +1,12 @@
-use push_definitions::PushError;
-use sqlx::Error as SqlxError;
+use plugins_definitions::HealthError;
+use pull_definitions::PullError;
+use push_definitions::{InitializeError, PushError};
+use sqlx::{migrate::MigrateError, Error as SqlxError};
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
 pub enum InternalPushError {
-    #[error("Error getting connection from: {0}")]
+    #[error("Error getting connection from pool: {0}")]
     Acquire(#[source] SqlxError),
     #[error("Error beginning transaction: {0}")]
     TransactionBegin(#[source] SqlxError),
@@ -155,6 +157,58 @@ pub enum InternalPushError {
 
 impl From<InternalPushError> for PushError {
     fn from(error: InternalPushError) -> Self {
+        Self {
+            error: error.into(),
+        }
+    }
+}
+
+#[derive(ThisError, Debug)]
+pub enum InternalInitializeError {
+    #[error("Failed to run migrations: {0}")]
+    Migrations(
+        #[from]
+        #[source]
+        MigrateError,
+    ),
+}
+
+impl From<InternalInitializeError> for InitializeError {
+    fn from(error: InternalInitializeError) -> Self {
+        Self {
+            error: error.into(),
+        }
+    }
+}
+
+#[derive(ThisError, Debug)]
+pub enum InternalHealthError {
+    #[error("Error getting connection from pool: {0}")]
+    Acquire(#[source] SqlxError),
+    #[error("Failed to ping database: {0}")]
+    Ping(#[source] SqlxError),
+}
+
+impl From<InternalHealthError> for HealthError {
+    fn from(error: InternalHealthError) -> Self {
+        Self {
+            error: error.into(),
+        }
+    }
+}
+
+#[derive(ThisError, Debug)]
+pub enum InternalPullError {
+    #[error("Error performing query: {0}")]
+    Query(
+        #[from]
+        #[source]
+        SqlxError,
+    ),
+}
+
+impl From<InternalPullError> for PullError {
+    fn from(error: InternalPullError) -> Self {
         Self {
             error: error.into(),
         }

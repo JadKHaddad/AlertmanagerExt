@@ -3,12 +3,29 @@ use crate::{
         alert_status::AlertStatusModel, alerts::DatabaseAlert, annotations::Annotation,
         labels::Label,
     },
+    error::InternalPullError,
     PostgresXPlugin,
 };
 use async_trait::async_trait;
 use models::StandAloneAlert;
 use plugins_definitions::Plugin;
 use pull_definitions::{Pull, PullAlertsFilter, PullError};
+
+impl PostgresXPlugin {
+    async fn pull_alerts_with_internal_error(
+        &self,
+        filter: &PullAlertsFilter,
+    ) -> Result<Vec<StandAloneAlert>, InternalPullError> {
+        let database_alerts = sqlx::query_file_as!(DatabaseAlert, "queries/pull_alerts.sql",)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(database_alerts
+            .into_iter()
+            .map(|alert| alert.into())
+            .collect())
+    }
+}
 
 #[async_trait]
 impl Pull for PostgresXPlugin {
@@ -19,18 +36,9 @@ impl Pull for PostgresXPlugin {
     ) -> Result<Vec<StandAloneAlert>, PullError> {
         tracing::trace!("Pulling.");
 
-        let database_alerts = sqlx::query_file_as!(DatabaseAlert, "queries/pull_alerts.sql",)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|error| PullError {
-                error: error.into(),
-            })?;
+        let alerts = self.pull_alerts_with_internal_error(filter).await?;
 
         tracing::trace!("Successfully pulled.");
-
-        Ok(database_alerts
-            .into_iter()
-            .map(|alert| alert.into())
-            .collect())
+        Ok(alerts)
     }
 }

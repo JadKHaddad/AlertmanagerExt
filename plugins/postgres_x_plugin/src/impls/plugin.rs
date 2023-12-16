@@ -1,7 +1,21 @@
-use crate::PostgresXPlugin;
+use crate::{error::InternalHealthError, PostgresXPlugin};
 use async_trait::async_trait;
 use plugins_definitions::{HealthError, Plugin, PluginMeta};
 use sqlx::Connection;
+
+impl PostgresXPlugin {
+    async fn health_with_internal_error(&self) -> Result<(), InternalHealthError> {
+        let mut conn = self
+            .pool
+            .acquire()
+            .await
+            .map_err(InternalHealthError::Acquire)?;
+
+        conn.ping().await.map_err(InternalHealthError::Ping)?;
+
+        Ok(())
+    }
+}
 
 #[async_trait]
 impl Plugin for PostgresXPlugin {
@@ -17,13 +31,7 @@ impl Plugin for PostgresXPlugin {
     async fn health(&self) -> Result<(), HealthError> {
         tracing::trace!("Checking health.");
 
-        let mut conn = self.pool.acquire().await.map_err(|error| HealthError {
-            error: error.into(),
-        })?;
-
-        conn.ping().await.map_err(|error| HealthError {
-            error: error.into(),
-        })?;
+        self.health_with_internal_error().await?;
 
         tracing::trace!("Successfully checked health.");
         Ok(())
