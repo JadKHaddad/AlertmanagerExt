@@ -4,7 +4,7 @@ use crate::{
         groups, groups_common_annotations, groups_common_labels, groups_labels, labels, prelude::*,
         sea_orm_active_enums::AlertStatus,
     },
-    error::InternalPushError,
+    error::{InternalInitializeError, InternalPushError},
     PostgresSeaPlugin,
 };
 use async_trait::async_trait;
@@ -14,26 +14,17 @@ use plugins_definitions::Plugin;
 use push_definitions::{InitializeError, Push, PushError};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait};
 
-#[async_trait]
-impl Push for PostgresSeaPlugin {
-    #[tracing::instrument(name = "push_initialize", skip(self), fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
-    async fn initialize(&mut self) -> Result<(), InitializeError> {
-        tracing::trace!("Initializing.");
+impl PostgresSeaPlugin {
+    async fn initialize_with_internal_error(&mut self) -> Result<(), InternalInitializeError> {
+        Migrator::up(&self.db, None).await?;
 
-        Migrator::up(&self.db, None)
-            .await
-            .map_err(|error| InitializeError {
-                error: error.into(),
-            })?;
-
-        tracing::trace!("Successfully initialized.");
         Ok(())
     }
 
-    #[tracing::instrument(name = "push_alert", skip_all, fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
-    async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError> {
-        tracing::trace!("Pushing.");
-
+    async fn push_alert_with_internal_error(
+        &self,
+        alertmanager_push: &AlertmanagerPush,
+    ) -> Result<(), InternalPushError> {
         tracing::trace!("Beginning transaction.");
         let txn = self
             .db
@@ -379,6 +370,29 @@ impl Push for PostgresSeaPlugin {
         txn.commit()
             .await
             .map_err(InternalPushError::TransactionCommit)?;
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Push for PostgresSeaPlugin {
+    #[tracing::instrument(name = "push_initialize", skip(self), fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
+    async fn initialize(&mut self) -> Result<(), InitializeError> {
+        tracing::trace!("Initializing.");
+
+        self.initialize_with_internal_error().await?;
+
+        tracing::trace!("Successfully initialized.");
+        Ok(())
+    }
+
+    #[tracing::instrument(name = "push_alert", skip_all, fields(name = %self.name(), group = %self.group(), type_ = %self.type_()))]
+    async fn push_alert(&self, alertmanager_push: &AlertmanagerPush) -> Result<(), PushError> {
+        tracing::trace!("Pushing.");
+
+        self.push_alert_with_internal_error(alertmanager_push)
+            .await?;
 
         tracing::trace!("Successfully pushed.");
         Ok(())

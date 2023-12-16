@@ -1,4 +1,4 @@
-use push_definitions::PushError;
+use push_definitions::{InitializeError, PushError};
 use sea_orm::error::DbErr;
 use thiserror::Error as ThisError;
 
@@ -153,6 +153,24 @@ pub enum InternalPushError {
 
 impl From<InternalPushError> for PushError {
     fn from(error: InternalPushError) -> Self {
+        Self {
+            error: error.into(),
+        }
+    }
+}
+
+#[derive(ThisError, Debug)]
+pub enum InternalInitializeError {
+    #[error("Failed to run migrations: {0}")]
+    Migrations(
+        #[from]
+        #[source]
+        DbErr,
+    ),
+}
+
+impl From<InternalInitializeError> for InitializeError {
+    fn from(error: InternalInitializeError) -> Self {
         Self {
             error: error.into(),
         }
