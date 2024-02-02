@@ -28,6 +28,9 @@ impl<'a> From<PluginMeta<'a>> for PluginResponseMeta {
 /// Query filter for plugins
 ///
 /// This is used to filter plugins by name, group or type.
+#[into_params(parameter_in = Query)]
 pub struct PluginFilterQuery {
+    /// Filter plugins by name, group or type.
+    #[param(nullable, example = json!("name matches /^postgres.*$/"))]
     pub filter: Option<String>,
 }

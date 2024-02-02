@@ -39,7 +39,7 @@ use utoipa::{
     )),
     tags()
 )]
-struct ApiDoc;
+pub struct ApiDoc;
 
 pub struct OpenApiDocFinalizer;
 

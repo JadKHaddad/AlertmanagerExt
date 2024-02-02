@@ -1,15 +1,15 @@
-use crate::extractors::query::ApiPluginFilterQuery;
-use crate::routes::models::PluginResponseMeta;
 use crate::state::ApiState;
 use crate::traits::{HasStatusCode, PushAndPlugin};
+use crate::{
+    extractors::query::ApiPluginFilterQuery,
+    routes::models::{PluginFilterQuery, PluginResponseMeta},
+};
 use axum::extract::State;
 use axum::{http::StatusCode, response::IntoResponse, Json};
 use schemars::JsonSchema;
 use serde::Serialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
-
-use super::models::PluginFilterQuery;
 
 #[derive(Clone, Debug, Serialize, JsonSchema, ToSchema)]
 pub struct ServerHealthResponse {}

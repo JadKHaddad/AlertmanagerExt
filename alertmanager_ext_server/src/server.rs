@@ -1,5 +1,5 @@
 use crate::{
-    config::Config, error_response::ErrorResponse, openapi::OpenApiDocFinalizer, state::ApiState,
+    config::Config, error_response::ErrorResponse, openapi::ApiDoc, state::ApiState,
     traits::PushAndPlugin,
 };
 use anyhow::{Context, Result as AnyResult};
@@ -180,11 +180,8 @@ async fn create_router(config: Config) -> AnyResult<Router> {
 
     let app = Router::new()
         .fallback(not_found)
-        .merge(
-            SwaggerUi::new("/swagger-ui")
-                .url("/api-docs/openapi.json", OpenApiDocFinalizer::openapi()),
-        )
-        .merge(Redoc::with_url("/redoc", OpenApiDocFinalizer::openapi()))
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
         .merge(RapiDoc::new("/api-docs/openapi.json").path("/rapidoc"))
         .route("/metrics", get(crate::routes::metrics::metrics))
         .route("/health", get(crate::routes::health::health))
