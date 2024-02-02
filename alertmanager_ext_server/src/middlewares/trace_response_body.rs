@@ -1,21 +1,27 @@
 use crate::error_response::ErrorResponse;
-use axum::{http::Request, middleware::Next, response::IntoResponse};
+use axum::{
+    body::Body,
+    extract::Request,
+    middleware::Next,
+    response::{IntoResponse, Response},
+};
+use http_body_util::BodyExt;
 
 /// Middlware to trace the response body
-pub async fn trace_response_body<B>(
-    req: Request<B>,
-    next: Next<B>,
+pub async fn trace_response_body(
+    req: Request,
+    next: Next,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let res = next.run(req).await;
 
     let (parts, body) = res.into_parts();
-    let bytes = hyper::body::to_bytes(body).await?;
+    let bytes = body.collect().await?.to_bytes();
 
     if let Ok(body) = std::str::from_utf8(&bytes) {
-        tracing::trace!(body);
+        tracing::info!("Response: {}", body);
     }
 
-    let res = hyper::Response::from_parts(parts, hyper::Body::from(bytes));
+    let res = Response::from_parts(parts, Body::from(bytes));
 
     Ok(res)
 }

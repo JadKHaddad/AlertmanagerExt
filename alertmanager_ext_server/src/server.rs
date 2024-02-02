@@ -193,7 +193,6 @@ async fn create_router(config: Config) -> AnyResult<Router> {
         .with_state(state)
         .layer(
             ServiceBuilder::new()
-                .layer(CorsLayer::permissive())
                 .layer(middleware::from_fn(
                     crate::middlewares::method_not_allowed::method_not_allowed,
                 ))
@@ -213,7 +212,8 @@ async fn create_router(config: Config) -> AnyResult<Router> {
                 )
                 .layer(middleware::from_fn(
                     crate::middlewares::trace_response_body::trace_response_body,
-                )),
+                ))
+                .layer(CorsLayer::permissive()),
         );
 
     Ok(app)
@@ -225,9 +225,10 @@ pub async fn run(config: Config) -> AnyResult<()> {
     let app = create_router(config).await?;
 
     tracing::info!(%addr, "Starting server.");
-    axum::Server::try_bind(&addr)
-        .context("Failed to bind server")?
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .context("Bind failed")?;
+    axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
         .context("Server failed")?;

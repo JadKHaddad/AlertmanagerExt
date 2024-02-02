@@ -1,12 +1,8 @@
 use crate::error_response::{ErrorResponse, ErrorResponseType};
-use axum::{
-    http::{Request, StatusCode},
-    middleware::Next,
-    response::IntoResponse,
-};
+use axum::{extract::Request, http::StatusCode, middleware::Next, response::IntoResponse};
 
 /// Middleware to map axum's `MethodNotAllowed` rejection to our `ErrorResponse`
-pub async fn method_not_allowed<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
+pub async fn method_not_allowed(req: Request, next: Next) -> impl IntoResponse {
     let resp = next.run(req).await;
     let status = resp.status();
     match status {

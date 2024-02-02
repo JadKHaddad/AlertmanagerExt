@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dev-dependencies]
-axum-test = "13.4.1"
+axum-test = "14.2.2"
 random_models_generator = { path = "../models_utilities/random_models_generator" }
 formatter = { path = "../models_utilities/formatter" }
 url = { workspace = true }
@@ -29,7 +29,7 @@ tower-http = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 axum = { workspace = true }
-hyper = { workspace = true }
+http-body-util = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing-test = { workspace = true }
