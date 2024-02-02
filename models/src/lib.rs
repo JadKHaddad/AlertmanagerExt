@@ -47,9 +47,11 @@ pub struct Alert {
     pub annotations: BTreeMap<String, String>,
     /// rfc3339
     #[serde_as(as = "serde_with::chrono::DateTime<serde_with::chrono::Utc>")]
+    #[schema(value_type = String)]
     pub starts_at: chrono::NaiveDateTime,
     /// rfc3339
     #[serde_as(as = "Option<serde_with::chrono::DateTime<serde_with::chrono::Utc>>")]
+    #[schema(value_type = Option<String>)]
     pub ends_at: Option<chrono::NaiveDateTime>,
     /// identifies the entity that caused the alert
     #[serde(rename = "generatorURL")]

@@ -190,7 +190,7 @@ async fn push_async(
     params(
         PluginFilterQuery
     ),
-    request_body = AlermanagerPush,
+    request_body = AlertmanagerPush,
     responses(
         (status = 202, description = "Push was successful.", body = PushResponse),
         (status = 207, description = "Some pushes were successful.", body = PushResponse),

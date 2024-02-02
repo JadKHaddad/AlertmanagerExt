@@ -1,0 +1,905 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "alertmanager_ext_server",
+        "description": "",
+        "license": {
+            "name": ""
+        },
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/health": {
+            "get": {
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check for the server",
+                "description": "Health check for the server",
+                "operationId": "health",
+                "responses": {
+                    "200": {
+                        "description": "Server is healthy.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServerHealthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "405": {
+                        "description": "Method not allowed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid filter.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/metrics": {
+            "get": {
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Prometheus metrics endpoint",
+                "description": "Prometheus metrics endpoint",
+                "operationId": "metrics",
+                "responses": {
+                    "200": {
+                        "description": "Prometheus metrics."
+                    },
+                    "405": {
+                        "description": "Method not allowed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid filter.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Iternal server error."
+                    }
+                }
+            }
+        },
+        "/plugin_health": {
+            "get": {
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check for plugins",
+                "description": "Health check for plugins",
+                "operationId": "plugin_health",
+                "parameters": [
+                    {
+                        "name": "filter",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "nullable": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All affected plugins are healthy.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PluginsHealthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "207": {
+                        "description": "Some affected plugins are unhealthy.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PluginsHealthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid path.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No plugins were found.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PluginsHealthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "405": {
+                        "description": "Method not allowed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid filter.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Missing path params. Iternal server error.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "All affected plugins are unhealthy.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PluginsHealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/push": {
+            "post": {
+                "tags": [
+                    "push"
+                ],
+                "summary": "Push alerts to all plugins asynchronously",
+                "description": "Push alerts to all plugins asynchronously",
+                "operationId": "push",
+                "parameters": [
+                    {
+                        "name": "filter",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "nullable": true
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AlertmanagerPush"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "202": {
+                        "description": "Push was successful.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PushResponse"
+                                }
+                            }
+                        }
+                    },
+                    "207": {
+                        "description": "Some pushes were successful.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PushResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid path. Invalid JSON. Failed to buffer the request body.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No plugins were found.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PushResponse"
+                                }
+                            }
+                        }
+                    },
+                    "405": {
+                        "description": "Method not allowed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Payload too large.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "Unsupported media type: Header is missing.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity. Invalid filter.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ErrorResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Push failed. Missing path params. Iternal server error.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PushResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Alert": {
+                "type": "object",
+                "required": [
+                    "status",
+                    "labels",
+                    "annotations",
+                    "startsAt",
+                    "generatorURL",
+                    "fingerprint"
+                ],
+                "properties": {
+                    "annotations": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "endsAt": {
+                        "type": "string",
+                        "description": "rfc3339",
+                        "nullable": true
+                    },
+                    "fingerprint": {
+                        "type": "string",
+                        "description": "fingerprint to identify the alert"
+                    },
+                    "generatorURL": {
+                        "type": "string",
+                        "description": "identifies the entity that caused the alert"
+                    },
+                    "labels": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "startsAt": {
+                        "type": "string",
+                        "description": "rfc3339"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/Status"
+                    }
+                }
+            },
+            "AlertmanagerPush": {
+                "type": "object",
+                "description": "Alertmanager webhook payload\n\nhttps://prometheus.io/docs/alerting/latest/configuration/#webhook_config",
+                "required": [
+                    "version",
+                    "groupKey",
+                    "truncatedAlerts",
+                    "status",
+                    "receiver",
+                    "groupLabels",
+                    "commonLabels",
+                    "commonAnnotations",
+                    "externalURL",
+                    "alerts"
+                ],
+                "properties": {
+                    "alerts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Alert"
+                        }
+                    },
+                    "commonAnnotations": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "commonLabels": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "externalURL": {
+                        "type": "string",
+                        "description": "backlink to the Alertmanager."
+                    },
+                    "groupKey": {
+                        "type": "string",
+                        "description": "key identifying the group of alerts (e.g. to deduplicate)"
+                    },
+                    "groupLabels": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "receiver": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/Status"
+                    },
+                    "truncatedAlerts": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "how many alerts have been truncated due to \"max_alerts\""
+                    },
+                    "version": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "description": "Default error response",
+                "required": [
+                    "error_type"
+                ],
+                "properties": {
+                    "error_type": {
+                        "$ref": "#/components/schemas/ErrorResponseType"
+                    }
+                }
+            },
+            "ErrorResponseType": {
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "required": [
+                            "type",
+                            "error"
+                        ],
+                        "properties": {
+                            "error": {
+                                "$ref": "#/components/schemas/PayloadInvalid"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "PayloadInvalid"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "type",
+                            "error"
+                        ],
+                        "properties": {
+                            "error": {
+                                "$ref": "#/components/schemas/QueryInvalid"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "QueryInvalid"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "type",
+                            "error"
+                        ],
+                        "properties": {
+                            "error": {
+                                "$ref": "#/components/schemas/PluginFilterInvalid"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "PluginFilterInvalid"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "type",
+                            "error"
+                        ],
+                        "properties": {
+                            "error": {
+                                "$ref": "#/components/schemas/PathInvalid"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "PathInvalid"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "type",
+                            "error"
+                        ],
+                        "properties": {
+                            "error": {
+                                "$ref": "#/components/schemas/InternalServerError"
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "InternalServerError"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "type"
+                        ],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "NotFound"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "type"
+                        ],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "MethodNotAllowed"
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "discriminator": {
+                    "propertyName": "type"
+                }
+            },
+            "HealthStatus": {
+                "type": "string",
+                "description": "Health status for all plugins",
+                "enum": [
+                    "Healthy",
+                    "Partial",
+                    "Unhealthy",
+                    "NoPlugins"
+                ]
+            },
+            "InternalServerError": {
+                "type": "object",
+                "required": [
+                    "reason"
+                ],
+                "properties": {
+                    "reason": {
+                        "type": "string"
+                    }
+                }
+            },
+            "PathInvalid": {
+                "type": "object",
+                "required": [
+                    "reason"
+                ],
+                "properties": {
+                    "reason": {
+                        "type": "string"
+                    }
+                }
+            },
+            "PayloadInvalid": {
+                "type": "object",
+                "required": [
+                    "reason",
+                    "expected_payload_schema"
+                ],
+                "properties": {
+                    "expected_payload_schema": {
+                        "type": "string"
+                    },
+                    "reason": {
+                        "type": "string"
+                    }
+                }
+            },
+            "PluginFilterInvalid": {
+                "type": "object",
+                "required": [
+                    "reason"
+                ],
+                "properties": {
+                    "reason": {
+                        "type": "string"
+                    }
+                }
+            },
+            "PluginFilterQuery": {
+                "type": "object",
+                "description": "Query filter for plugins\n\nThis is used to filter plugins by name, group or type.",
+                "properties": {
+                    "filter": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
+            "PluginHealthStatus": {
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "required": [
+                            "type"
+                        ],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "Healthy"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "type",
+                            "content"
+                        ],
+                        "properties": {
+                            "content": {
+                                "type": "object",
+                                "description": "Plugin is unhealthy",
+                                "required": [
+                                    "message"
+                                ],
+                                "properties": {
+                                    "message": {
+                                        "type": "string",
+                                        "description": "Reason why plugin is unhealthy"
+                                    }
+                                }
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "Unhealthy"
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "description": "Plugin health status",
+                "discriminator": {
+                    "propertyName": "type"
+                }
+            },
+            "PluginPushResponse": {
+                "type": "object",
+                "description": "Response for a plugin push",
+                "required": [
+                    "status",
+                    "plugin_meta"
+                ],
+                "properties": {
+                    "plugin_meta": {
+                        "$ref": "#/components/schemas/PluginResponseMeta"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/PluginPushStatus"
+                    }
+                }
+            },
+            "PluginPushStatus": {
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "required": [
+                            "type"
+                        ],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "Ok"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "type",
+                            "content"
+                        ],
+                        "properties": {
+                            "content": {
+                                "type": "object",
+                                "description": "Push failed",
+                                "required": [
+                                    "message"
+                                ],
+                                "properties": {
+                                    "message": {
+                                        "type": "string",
+                                        "description": "Error message"
+                                    }
+                                }
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "Failed"
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "description": "Push status for a plugin",
+                "discriminator": {
+                    "propertyName": "type"
+                }
+            },
+            "PluginResponseMeta": {
+                "type": "object",
+                "description": "Meta information about a plugin",
+                "required": [
+                    "plugin_name",
+                    "plugin_type",
+                    "plugin_group"
+                ],
+                "properties": {
+                    "plugin_group": {
+                        "type": "string",
+                        "description": "Group of the plugin"
+                    },
+                    "plugin_name": {
+                        "type": "string",
+                        "description": "Name of the plugin"
+                    },
+                    "plugin_type": {
+                        "type": "string",
+                        "description": "Type of the plugin"
+                    }
+                }
+            },
+            "PlugingHealthResponse": {
+                "type": "object",
+                "required": [
+                    "status",
+                    "plugin_meta"
+                ],
+                "properties": {
+                    "plugin_meta": {
+                        "$ref": "#/components/schemas/PluginResponseMeta"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/PluginHealthStatus"
+                    }
+                }
+            },
+            "PluginsHealthResponse": {
+                "type": "object",
+                "required": [
+                    "status",
+                    "plugin_health_responses"
+                ],
+                "properties": {
+                    "plugin_health_responses": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PlugingHealthResponse"
+                        },
+                        "description": "Health check for individual plugins"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/HealthStatus"
+                    }
+                }
+            },
+            "PushResponse": {
+                "type": "object",
+                "description": "Response for a push",
+                "required": [
+                    "status",
+                    "plugin_push_responses"
+                ],
+                "properties": {
+                    "plugin_push_responses": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PluginPushResponse"
+                        },
+                        "description": "Responses for each plugin"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/PushStatus"
+                    }
+                }
+            },
+            "PushStatus": {
+                "type": "string",
+                "description": "Push status",
+                "enum": [
+                    "Ok",
+                    "Partial",
+                    "Failed",
+                    "NoPlugins"
+                ]
+            },
+            "QueryInvalid": {
+                "type": "object",
+                "required": [
+                    "reason",
+                    "expected_query_schema"
+                ],
+                "properties": {
+                    "expected_query_schema": {
+                        "type": "string"
+                    },
+                    "reason": {
+                        "type": "string"
+                    }
+                }
+            },
+            "ServerHealthResponse": {
+                "type": "object"
+            },
+            "Status": {
+                "type": "string",
+                "enum": [
+                    "resolved",
+                    "firing"
+                ]
+            }
+        }
+    },
+    "tags": []
+}

@@ -22,6 +22,7 @@ use utoipa::{
         crate::error_response::ErrorResponseType,
         crate::error_response::PayloadInvalid,
         crate::error_response::QueryInvalid,
+        crate::error_response::PluginFilterInvalid,
         crate::error_response::PathInvalid,
         crate::error_response::InternalServerError,
         crate::routes::models::PluginResponseMeta,
