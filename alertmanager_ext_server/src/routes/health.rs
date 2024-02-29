@@ -1,11 +1,12 @@
-use crate::state::ApiState;
-use crate::traits::{HasStatusCode, PushAndPlugin};
 use crate::{
     extractors::query::ApiPluginFilterQuery,
     routes::models::{PluginFilterQuery, PluginResponseMeta},
 };
-use axum::extract::State;
-use axum::{http::StatusCode, response::IntoResponse, Json};
+use crate::{
+    state::ApiState,
+    traits::{HasStatusCode, PushAndPlugin},
+};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use schemars::JsonSchema;
 use serde::Serialize;
 use std::sync::Arc;
@@ -135,7 +136,19 @@ async fn match_plugin_health(plugin: &Arc<dyn PushAndPlugin>) -> PlugingHealthRe
         PluginFilterQuery
     ),
     responses(
-        (status = 200, description = "All affected plugins are healthy.", body = PluginsHealthResponse),
+        (status = 200, description = "All affected plugins are healthy.", body = PluginsHealthResponse, example = json!({
+            "status": "Healthy",
+            "plugin_health_responses": [
+                {
+                    "status": "Healthy",
+                    "plugin_meta": {
+                        "plugin_name": "example",
+                        "plugin_type": "push",
+                        "plugin_group": "example"
+                    }
+                }
+            ]
+        })),
         (status = 207, description = "Some affected plugins are unhealthy.", body = PluginsHealthResponse),
         (status = 503, description = "All affected plugins are unhealthy.", body = PluginsHealthResponse),
         (status = 404, description = "No plugins were found.", body = PluginsHealthResponse)

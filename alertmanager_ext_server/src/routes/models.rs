@@ -24,10 +24,10 @@ impl<'a> From<PluginMeta<'a>> for PluginResponseMeta {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, IntoParams, ToSchema)]
 /// Query filter for plugins
 ///
 /// This is used to filter plugins by name, group or type.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, IntoParams, ToSchema)]
 #[into_params(parameter_in = Query)]
 pub struct PluginFilterQuery {
     /// Filter plugins by name, group or type.

@@ -4,9 +4,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
-#[non_exhaustive]
 /// Default error response
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct ErrorResponse {
     /// Error type
     pub error_type: ErrorResponseType,
