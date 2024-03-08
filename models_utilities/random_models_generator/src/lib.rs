@@ -30,6 +30,8 @@ fn generate_random_btreemap() -> BTreeMap<String, String> {
         map.insert(generate_random_string(), generate_random_string());
     }
 
+    map.insert(format!("NAME"), format!("I AM ALWAYS HERE"));
+
     map
 }
 

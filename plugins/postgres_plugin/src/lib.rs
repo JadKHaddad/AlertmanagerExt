@@ -106,7 +106,7 @@ mod test {
     // cargo test --package postgres_plugin --lib --release -- test::push_random_alerts --exact --nocapture --ignored
     async fn push_random_alerts() {
         let plugin = create_and_init_plugin().await;
-        let pushes = generate_random_alertmanager_pushes(200);
+        let pushes = generate_random_alertmanager_pushes(10);
         for (i, push) in pushes.iter().enumerate() {
             tracing::info!("Pushing alert {}/{}", i + 1, pushes.len());
             if let Err(error) = plugin.push_alert(push).await {

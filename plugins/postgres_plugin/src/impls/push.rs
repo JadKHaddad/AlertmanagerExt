@@ -59,6 +59,13 @@ impl PostgresPlugin {
         label: &InsertableLabel<'_>,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
+        tracing::trace!(
+            group_id,
+            label_id,
+            name = %label.name,
+            value = %label.value,
+            "Assigning group label.");
+
         let group_label = InsertableGroupLabel { group_id, label_id };
 
         diesel::insert_into(database::schema::groups_labels::table)
@@ -78,7 +85,7 @@ impl PostgresPlugin {
     /// Helper function
     ///
     /// Only labels are shared between [`crate::database::models::groups::Group`] and [`crate::database::models::alerts::Alert`].
-    async fn insert_label(
+    async fn get_or_insert_label(
         conn: &mut AsyncPgConnection,
         label: &InsertableLabel<'_>,
     ) -> Result<i32, LablelInsertionError> {
@@ -125,7 +132,7 @@ impl PostgresPlugin {
                 value: label.1,
             };
 
-            let label_id = Self::insert_label(conn, &label)
+            let label_id = Self::get_or_insert_label(conn, &label)
                 .await
                 .map_err(|error| match error {
                     LablelInsertionError::Get(error) => InternalPushError::GroupLabelId {
@@ -155,6 +162,13 @@ impl PostgresPlugin {
         common_label: &InsertableCommonLabel<'_>,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
+        tracing::trace!(
+            group_id,
+            common_label_id,
+            name = %common_label.name,
+            value = %common_label.value,
+            "Assigning group common label.");
+
         let group_common_label = InsertableGroupCommonLabel {
             group_id,
             common_label_id,
@@ -244,6 +258,13 @@ impl PostgresPlugin {
         common_annotation: &InsertableCommonAnnotation<'_>,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
+        tracing::trace!(
+            group_id,
+            common_annotation_id,
+            name = %common_annotation.name,
+            value = %common_annotation.value,
+            "Assigning group common annotation.");
+
         let group_common_annotation = InsertableGroupCommonAnnotation {
             group_id,
             common_annotation_id,
@@ -367,6 +388,13 @@ impl PostgresPlugin {
         alert: &AlertmanagerPushAlert,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
+        tracing::trace!(
+            alert_id,
+            label_id,
+            name = %label.name,
+            value = %label.value,
+            "Assigning alert label.");
+
         let alert_label = InsertableAlertLabel { alert_id, label_id };
 
         diesel::insert_into(database::schema::alerts_labels::table)
@@ -396,7 +424,7 @@ impl PostgresPlugin {
                 value: label.1,
             };
 
-            let label_id = Self::insert_label(conn, &label)
+            let label_id = Self::get_or_insert_label(conn, &label)
                 .await
                 .map_err(|error| match error {
                     LablelInsertionError::Get(error) => InternalPushError::AlertLabelId {
@@ -430,6 +458,13 @@ impl PostgresPlugin {
         alert: &AlertmanagerPushAlert,
         alertmanager_push: &AlertmanagerPush,
     ) -> Result<(), InternalPushError> {
+        tracing::trace!(
+            alert_id,
+            annotation_id,
+            name = %annotation.name,
+            value = %annotation.value,
+            "Assigning alert annotation.");
+
         let alert_annotation = InsertableAlertAnnotation {
             alert_id,
             annotation_id,
