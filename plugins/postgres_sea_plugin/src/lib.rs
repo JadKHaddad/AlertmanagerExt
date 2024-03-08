@@ -4,8 +4,8 @@ use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use serde::{Deserialize, Serialize};
 
 #[allow(clippy::enum_variant_names)]
-mod entity;
-mod entity_ext;
+mod entities;
+mod entities_ext;
 mod error;
 mod impls;
 

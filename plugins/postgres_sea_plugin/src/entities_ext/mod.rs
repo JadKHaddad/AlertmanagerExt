@@ -1,4 +1,4 @@
-use crate::entity::sea_orm_active_enums::AlertStatus;
+use crate::entities::sea_orm_active_enums::AlertStatus;
 use models::Status as AlermanagerPushStatus;
 
 impl From<&AlermanagerPushStatus> for AlertStatus {

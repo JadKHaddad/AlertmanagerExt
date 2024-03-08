@@ -1,7 +1,7 @@
 use crate::{
-    entity::{
+    entities::{
         alerts, alerts_annotations, alerts_labels, annotations, common_annotations, common_labels,
-        groups, groups_common_annotations, groups_common_labels, groups_labels, labels, prelude::*,
+        groups, groups_common_annotations, groups_common_labels, groups_labels, labels,
         sea_orm_active_enums::AlertStatus,
     },
     error::{InternalInitializeError, InternalPushError},
@@ -48,7 +48,7 @@ impl PostgresSeaPlugin {
         .id;
 
         for (label_name, label_value) in alertmanager_push.group_labels.iter() {
-            let label_id_opt = Labels::find()
+            let label_id_opt = labels::Entity::find()
                 .filter(
                     labels::Column::Name
                         .eq(label_name)
@@ -106,7 +106,7 @@ impl PostgresSeaPlugin {
         }
 
         for (common_label_name, common_label_value) in alertmanager_push.common_labels.iter() {
-            let common_label_id_opt = CommonLabels::find()
+            let common_label_id_opt = common_labels::Entity::find()
                 .filter(
                     common_labels::Column::Name
                         .eq(common_label_name)
@@ -166,7 +166,7 @@ impl PostgresSeaPlugin {
         for (common_annotation_name, common_annotation_value) in
             alertmanager_push.common_annotations.iter()
         {
-            let common_annotation_id_opt = CommonAnnotations::find()
+            let common_annotation_id_opt = common_annotations::Entity::find()
                 .filter(
                     common_annotations::Column::Name
                         .eq(common_annotation_name)
@@ -244,7 +244,7 @@ impl PostgresSeaPlugin {
             .id;
 
             for (label_name, label_value) in alert.labels.iter() {
-                let label_id_opt = Labels::find()
+                let label_id_opt = labels::Entity::find()
                     .filter(
                         labels::Column::Name
                             .eq(label_name)
@@ -305,7 +305,7 @@ impl PostgresSeaPlugin {
             }
 
             for (annotation_name, annotation_value) in alert.annotations.iter() {
-                let annotation_id_opt = Annotations::find()
+                let annotation_id_opt = annotations::Entity::find()
                     .filter(
                         annotations::Column::Name
                             .eq(annotation_name)

@@ -120,7 +120,6 @@ impl Migration {
     fn table_create_statements() -> Vec<TableCreateStatement> {
         let groups_table = Table::create()
             .table(Groups::Table)
-            .if_not_exists()
             .col(
                 ColumnDef::new(Groups::Id)
                     .integer()
@@ -154,13 +153,12 @@ impl Migration {
 
         let alerts_table = Table::create()
             .table(Alerts::Table)
-            .if_not_exists()
             .col(
                 ColumnDef::new(Alerts::Id)
                     .integer()
                     .not_null()
                     .auto_increment()
-                    .unique_key(),
+                    .primary_key(),
             )
             .col(ColumnDef::new(Alerts::GroupId).integer().not_null())
             .col(ColumnDef::new(Alerts::GroupKey).string().not_null())
@@ -176,13 +174,10 @@ impl Migration {
             .col(ColumnDef::new(Alerts::EndsAt).timestamp())
             .col(ColumnDef::new(Alerts::GeneratorUrl).string().not_null())
             .col(ColumnDef::new(Alerts::Fingerprint).string().not_null())
-            .primary_key(
-                Index::create()
-                    .col(Alerts::GroupKey)
-                    .col(Alerts::Fingerprint),
-            )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .from_tbl(Alerts::Table)
                     .from_col(Alerts::GroupKey)
                     .to_tbl(Groups::Table)
@@ -190,6 +185,8 @@ impl Migration {
             )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .from_tbl(Alerts::Table)
                     .from_col(Alerts::GroupId)
                     .to_tbl(Groups::Table)
@@ -199,79 +196,58 @@ impl Migration {
 
         let lables_table = Table::create()
             .table(Labels::Table)
-            .if_not_exists()
             .col(
                 ColumnDef::new(Labels::Id)
                     .integer()
                     .not_null()
                     .auto_increment()
-                    .unique_key(),
+                    .primary_key(),
             )
             .col(ColumnDef::new(Labels::Name).string().not_null())
             .col(ColumnDef::new(Labels::Value).string().not_null())
-            .primary_key(Index::create().col(Labels::Name).col(Labels::Value))
             .to_owned();
 
         let annotations_table = Table::create()
             .table(Annotations::Table)
-            .if_not_exists()
             .col(
                 ColumnDef::new(Annotations::Id)
                     .integer()
                     .not_null()
                     .auto_increment()
-                    .unique_key(),
+                    .primary_key(),
             )
             .col(ColumnDef::new(Annotations::Name).string().not_null())
             .col(ColumnDef::new(Annotations::Value).string().not_null())
-            .primary_key(
-                Index::create()
-                    .col(Annotations::Name)
-                    .col(Annotations::Value),
-            )
             .to_owned();
 
         let common_labels_table = Table::create()
             .table(CommonLabels::Table)
-            .if_not_exists()
             .col(
                 ColumnDef::new(CommonLabels::Id)
                     .integer()
                     .not_null()
                     .auto_increment()
-                    .unique_key(),
+                    .primary_key(),
             )
             .col(ColumnDef::new(CommonLabels::Name).string().not_null())
             .col(ColumnDef::new(CommonLabels::Value).string().not_null())
-            .primary_key(
-                Index::create()
-                    .col(CommonLabels::Name)
-                    .col(CommonLabels::Value),
-            )
             .to_owned();
 
         let common_annotations_table = Table::create()
             .table(CommonAnnotations::Table)
-            .if_not_exists()
             .col(
                 ColumnDef::new(CommonAnnotations::Id)
                     .integer()
                     .not_null()
                     .auto_increment()
-                    .unique_key(),
+                    .primary_key(),
             )
             .col(ColumnDef::new(CommonAnnotations::Name).string().not_null())
             .col(ColumnDef::new(CommonAnnotations::Value).string().not_null())
-            .primary_key(
-                Index::create()
-                    .col(CommonAnnotations::Name)
-                    .col(CommonAnnotations::Value),
-            )
             .to_owned();
 
         let groups_labels_table = Table::create()
             .table(GroupsLabels::Table)
-            .if_not_exists()
             .col(ColumnDef::new(GroupsLabels::GroupId).integer().not_null())
             .col(ColumnDef::new(GroupsLabels::LabelId).integer().not_null())
             .primary_key(
@@ -281,6 +257,8 @@ impl Migration {
             )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .from_tbl(GroupsLabels::Table)
                     .from_col(GroupsLabels::GroupId)
                     .to_tbl(Groups::Table)
@@ -288,6 +266,8 @@ impl Migration {
             )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .from_tbl(GroupsLabels::Table)
                     .from_col(GroupsLabels::LabelId)
                     .to_tbl(Labels::Table)
@@ -297,7 +277,6 @@ impl Migration {
 
         let groups_common_labels_table = Table::create()
             .table(GroupsCommonLabels::Table)
-            .if_not_exists()
             .col(
                 ColumnDef::new(GroupsCommonLabels::GroupId)
                     .integer()
@@ -315,6 +294,8 @@ impl Migration {
             )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .from_tbl(GroupsCommonLabels::Table)
                     .from_col(GroupsCommonLabels::CommonLabelId)
                     .to_tbl(CommonLabels::Table)
@@ -322,6 +303,8 @@ impl Migration {
             )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .from_tbl(GroupsCommonLabels::Table)
                     .from_col(GroupsCommonLabels::GroupId)
                     .to_tbl(Groups::Table)
@@ -331,7 +314,6 @@ impl Migration {
 
         let groups_common_annotations_table = Table::create()
             .table(GroupsCommonAnnotations::Table)
-            .if_not_exists()
             .col(
                 ColumnDef::new(GroupsCommonAnnotations::GroupId)
                     .integer()
@@ -349,6 +331,8 @@ impl Migration {
             )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .from_tbl(GroupsCommonAnnotations::Table)
                     .from_col(GroupsCommonAnnotations::CommonAnnotationId)
                     .to_tbl(CommonAnnotations::Table)
@@ -356,6 +340,8 @@ impl Migration {
             )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .from_tbl(GroupsCommonAnnotations::Table)
                     .from_col(GroupsCommonAnnotations::GroupId)
                     .to_tbl(Groups::Table)
@@ -365,7 +351,6 @@ impl Migration {
 
         let alerts_labels_table = Table::create()
             .table(AlertsLabels::Table)
-            .if_not_exists()
             .col(ColumnDef::new(AlertsLabels::AlertId).integer().not_null())
             .col(ColumnDef::new(AlertsLabels::LabelId).integer().not_null())
             .primary_key(
@@ -375,6 +360,8 @@ impl Migration {
             )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .from_tbl(AlertsLabels::Table)
                     .from_col(AlertsLabels::AlertId)
                     .to_tbl(Alerts::Table)
@@ -382,6 +369,8 @@ impl Migration {
             )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .from_tbl(AlertsLabels::Table)
                     .from_col(AlertsLabels::LabelId)
                     .to_tbl(Labels::Table)
@@ -391,7 +380,6 @@ impl Migration {
 
         let alerts_annotations_table = Table::create()
             .table(AlertsAnnotations::Table)
-            .if_not_exists()
             .col(
                 ColumnDef::new(AlertsAnnotations::AlertId)
                     .integer()
@@ -409,6 +397,8 @@ impl Migration {
             )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .from_tbl(AlertsAnnotations::Table)
                     .from_col(AlertsAnnotations::AlertId)
                     .to_tbl(Alerts::Table)
@@ -416,6 +406,8 @@ impl Migration {
             )
             .foreign_key(
                 ForeignKeyCreateStatement::new()
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .from_tbl(AlertsAnnotations::Table)
                     .from_col(AlertsAnnotations::AnnotationId)
                     .to_tbl(Annotations::Table)
@@ -437,6 +429,43 @@ impl Migration {
             alerts_annotations_table,
         ]
     }
+
+    fn index_create_statements() -> Vec<IndexCreateStatement> {
+        let alerts_unique_group_key_fingerprint = Index::create()
+            .table(Alerts::Table)
+            .name("alerts_unique_group_key_fingerprint")
+            .col(Alerts::GroupKey)
+            .col(Alerts::Fingerprint)
+            .to_owned();
+
+        let labels_unique_name_value = Index::create()
+            .table(Labels::Table)
+            .name("labels_unique_name_value")
+            .col(Labels::Name)
+            .col(Labels::Value)
+            .to_owned();
+
+        let annotations_unique_name_value = Index::create()
+            .table(Annotations::Table)
+            .name("annotations_unique_name_value")
+            .col(Annotations::Name)
+            .col(Annotations::Value)
+            .to_owned();
+
+        let common_labels_unique_name_value = Index::create()
+            .table(CommonLabels::Table)
+            .name("common_labels_unique_name_value")
+            .col(CommonLabels::Name)
+            .col(CommonLabels::Value)
+            .to_owned();
+
+        vec![
+            alerts_unique_group_key_fingerprint,
+            labels_unique_name_value,
+            annotations_unique_name_value,
+            common_labels_unique_name_value,
+        ]
+    }
 }
 
 #[async_trait::async_trait]
@@ -448,6 +477,10 @@ impl MigrationTrait for Migration {
 
         for statement in Self::table_create_statements() {
             manager.create_table(statement).await?;
+        }
+
+        for statement in Self::index_create_statements() {
+            manager.create_index(statement).await?;
         }
 
         Ok(())
