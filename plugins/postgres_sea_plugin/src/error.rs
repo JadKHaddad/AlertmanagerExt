@@ -160,6 +160,14 @@ impl From<InternalPushError> for PushError {
 }
 
 #[derive(ThisError, Debug)]
+pub enum LablelInsertionError {
+    #[error("Get error: {0}")]
+    Get(#[source] DbErr),
+    #[error("Insert error: {0}")]
+    Insert(#[source] DbErr),
+}
+
+#[derive(ThisError, Debug)]
 pub enum InternalInitializeError {
     #[error("Failed to run migrations: {0}")]
     Migrations(
